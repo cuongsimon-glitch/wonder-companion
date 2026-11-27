@@ -14,3 +14,15 @@ Each entry gives the date, the decision and the reason.
   where live AI isn't available.
 - 2026-11-27: AI text is set only with textContent, and villain colours must match a hex pattern.
   Reason: AI output is untrusted.
+- 2026-11-27: Story schema v2 replaces "one clue, retry until right". Each chapter has two clues
+  of different kinds to find, plus a third revealed by the consequence of the child's choice
+  (the Three Clue Rule). Every choice is acted out and the story always moves on (branch and
+  bottleneck). Reason: docs/storytelling.md; choices must visibly matter and setbacks must teach.
+- 2026-11-27: Chapters follow Kishotenketsu beats (ki, sho, ten, ketsu) with Story Spine
+  "because of that" bridges between them; chapter 3 is the twist or low point. Reason: research.
+- 2026-11-27: State: villain power starts at 3 (range 0-5; wise -1, risky 0, silly +1), hearts
+  start at 3 and never go below 1. Ending after chapter 4: triumph if power <= 1, second_try if
+  >= 4, else muddle. Endings depend on choices only, not on how many clues were found; the
+  research suggested clues should count too. Revisit after real use.
+- 2026-11-27: Delayed consequences: an item gained by a wise choice can unlock a later choice,
+  and the villain can steal it. Every ending offers "Try a different path" on the same story.

@@ -14,5 +14,8 @@
   `capabilities` on a redeploy to keep the ones the page already has.
 - Artifact pages block external images, fetches and most CDNs. Keep everything inside the HTML.
 - Lessons can take 30–90 seconds to write. The loading screen must stay friendly for that long.
-- Not tested: whether a child reaches the end when an AI story has no good choice in a chapter.
-  `validStory` drops such chapters, so a story could end up with only 2 chapters.
+- Live AI stories are only validated against synthetic input. A real model may return JSON that
+  `validStory` has to repair or reject; watch the first real runs.
+- Editing `DEMO` means updating `EXPECT` in `tests/smoke.js`.
+- On a phone (390 px) the stage is small and clue tags on it are cramped, though nothing
+  scrolls sideways.

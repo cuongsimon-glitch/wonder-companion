@@ -5,7 +5,10 @@ with a daily Wonder block where children follow their own questions.
 
 A child asks any question. The AI does not answer it. It writes a four-chapter adventure starring
 Pip (a leaf-sprout head, a saffron raincoat and a lantern), who faces a cheeky villain and
-obstacles. Each chapter hides one true clue. The child chooses what Pip does and pieces the
+obstacles. Each chapter has clues of different kinds to find (spot, listen, compare, ask, test,
+pattern). The child chooses what Pip does, the animation acts the choice out, and the
+consequences carry forward: the villain's power, Pip's hearts and the backpack change, earlier
+choices unlock or lock later ones, and the state picks one of three endings. The child pieces the
 answer together. A teacher checks the facts first, and the session ends with the child's
 reflection and a note for the family. Scenes are watercolour-style 2D vector art.
 
@@ -26,11 +29,12 @@ is opened in Claude. The built-in sample story about the fox camera works anywhe
 - `.claude/skills/reflect/`: the end-of-session review.
 
 ## How to check the app
-Run `node tests/smoke.js` from the repo root. It must print `PASS` and exit 0. It plays the sample
-story in the pre-installed Chromium from the ask screen to the family note, with one wrong and one
-right choice per chapter, then checks a phone width for sideways scrolling. Any page error fails
-it. Screenshots go to `$SMOKE_OUT` or `/tmp/wonder-smoke`; look at them, since PASS doesn't catch
-overlaps. Pass a page path as the first argument to test another copy. A "Done when:" check names
+Run `node tests/smoke.js` from the repo root. It must print `PASS` and exit 0. It loads the page
+with `#fast` and plays the sample story along a wise, a risky and a silly path to all three
+endings, uses all six clue kinds, checks the HUD state after each chapter, then checks a phone
+width and one run with real animation. Any page error fails it. The expected state values are in
+`EXPECT` in the test, so editing `DEMO` means updating `EXPECT`. Screenshots go to `$SMOKE_OUT`
+or `/tmp/wonder-smoke`; look at them, since PASS doesn't catch overlaps. A "Done when:" check names
 this command or the exact clicks and what must appear. Live AI, read-aloud and dictation can't be
 tested outside Claude. Say so rather than claim they work.
 

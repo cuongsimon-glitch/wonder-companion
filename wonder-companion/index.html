@@ -14,9 +14,15 @@
   --saffron-deep: #b86d0e;
   --teal: #2f8c88;
   --teal-soft: #dcefec;
+  --teal-btn: #25706c; --teal-btn-deep: #1a524f; --on-teal: #ffffff; --teal-text: #20706c; --need-ink: #8f4f05;
   --rose: #d9576b;
   --rose-soft: #fbe3e6;
   --gold-soft: #fdf1d6;
+  --chip: rgba(255,255,255,.88);
+  --chip-ink: #26314f;
+  --chip-heart: #d9576b;
+  --chip-seg: #8a5cc2;
+  --chip-seg-off: #e4e1ee;
   --display: "Fredoka", "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
   --body: "Atkinson Hyperlegible", "Verdana", system-ui, sans-serif;
 }
@@ -24,12 +30,14 @@
   :root:not([data-theme="light"]) {
     --paper: #171c2e; --card: #212842; --ink: #eef0f7; --ink-soft: #a9b0cc; --line: #343c5c;
     --saffron: #f5b453; --saffron-deep: #f5b453; --teal: #6cc7c0; --teal-soft: #1f3b44;
+    --teal-btn: #6cc7c0; --teal-btn-deep: #3f918b; --on-teal: #0f2a28; --teal-text: #6cc7c0; --need-ink: #f5b453;
     --rose: #f08a99; --rose-soft: #43283a; --gold-soft: #3a3324; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --paper: #171c2e; --card: #212842; --ink: #eef0f7; --ink-soft: #a9b0cc; --line: #343c5c;
   --saffron: #f5b453; --saffron-deep: #f5b453; --teal: #6cc7c0; --teal-soft: #1f3b44;
+  --teal-btn: #6cc7c0; --teal-btn-deep: #3f918b; --on-teal: #0f2a28; --teal-text: #6cc7c0; --need-ink: #f5b453;
   --rose: #f08a99; --rose-soft: #43283a; --gold-soft: #3a3324; color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -48,13 +56,35 @@ header { display: flex; flex-wrap: wrap; align-items: center; justify-content: s
 .steps li.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .steps li.done { color: var(--teal); border-color: var(--teal); }
 
-.stage { position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 16 / 9; max-width: 100%; background: #e9efe7; box-shadow: 0 1px 0 var(--line), 0 12px 30px -18px rgba(20,30,60,.45); }
+.stage { position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 16 / 9; max-width: 100%; container-type: inline-size; background: #e9efe7; box-shadow: 0 1px 0 var(--line), 0 12px 30px -18px rgba(20,30,60,.45); }
 .stage svg { display: block; width: 100%; height: 100%; }
-.stage .title-tag { position: absolute; left: 14px; top: 12px; font-family: var(--display); font-weight: 600; font-size: clamp(.8rem, 2vw, 1rem); background: rgba(255,255,255,.82); color: #26314f; padding: 4px 12px; border-radius: 99px; max-width: calc(55% - 40px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.meter { position: absolute; right: 14px; top: 12px; background: rgba(255,255,255,.85); color: #26314f; border-radius: 12px; padding: 6px 10px; font-size: .72rem; width: min(220px, 45%); }
+.stage .title-tag { position: absolute; left: 14px; top: 12px; font-family: var(--display); font-weight: 600; font-size: clamp(.8rem, 2vw, 1rem); background: var(--chip); color: var(--chip-ink); padding: 4px 12px; border-radius: 99px; max-width: calc(55% - 40px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud { position: absolute; left: 14px; top: 46px; display: flex; flex-wrap: wrap; gap: 6px; max-width: 60%; pointer-events: none; }
+.hud .pill { display: flex; align-items: center; gap: 3px; background: var(--chip); color: var(--chip-ink); border-radius: 99px; padding: 3px 9px; min-height: 28px; }
+.hud .heart { width: 20px; height: 20px; display: block; color: var(--chip-heart); }
+.hud .hw { display: inline-block; line-height: 0; }
+.hud .hw.lost .heart { color: #c9c4d4; }
+.hud .it { display: inline-block; line-height: 0; }
+.hud .it svg { width: 22px; height: 22px; display: block; }
+.hud .empty { font-size: .72rem; color: #5b6585; }
+.meter { position: absolute; right: 14px; top: 12px; background: var(--chip); color: var(--chip-ink); border-radius: 12px; padding: 6px 10px; font-size: .72rem; width: min(220px, 45%); pointer-events: none; }
 .meter b { display: block; font-family: var(--display); font-weight: 600; font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.meter .bar { height: 8px; border-radius: 99px; background: #e4e1ee; margin-top: 4px; overflow: hidden; }
-.meter .bar i { display: block; height: 100%; background: #8a5cc2; border-radius: 99px; transition: width .8s ease; }
+.meter .segs { display: flex; gap: 4px; margin-top: 4px; }
+.meter .segs i { flex: 1; height: 8px; border-radius: 99px; background: var(--chip-seg-off); transition: background .5s ease; }
+.meter .segs i.on { background: var(--chip-seg); }
+.caption { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); max-width: 62%; text-align: center; font-family: var(--display); font-weight: 600; font-size: clamp(.75rem, 2.1cqw, 1rem); line-height: 1.25; background: var(--chip); color: var(--chip-ink); padding: 5px 14px; border-radius: 99px; pointer-events: none; }
+.skip { position: absolute; right: 12px; bottom: 10px; z-index: 3; font-family: var(--display); font-weight: 600; font-size: .9rem; padding: 5px 14px; border-radius: 99px; background: var(--chip); color: var(--chip-ink); box-shadow: inset 0 0 0 2px var(--chip-ink); }
+.bits { position: absolute; inset: 0; pointer-events: none; }
+.bit { position: absolute; top: 33%; width: 46%; display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; font-family: var(--display); font-weight: 600; font-size: clamp(.62rem, 1.9cqw, .92rem); line-height: 1.2; color: var(--chip-ink); }
+.bit.s0 { left: 3%; } .bit.s1 { left: 51%; }
+.bubble, .tag { background: #fff; color: #26314f; border-radius: 14px; padding: 5px 11px; box-shadow: 0 2px 0 rgba(38,49,79,.25); animation: rise .4s ease; overflow-wrap: anywhere; }
+.bubble { border: 2px solid #26314f; }
+.tag { border: 2px dashed #b9a47a; background: #fffaf0; flex: 1 1 40%; min-width: 0; }
+.tag.right { border: 2px solid #2f8c88; background: #e7f6f3; }
+.tag small { display: block; font-weight: 700; opacity: .7; }
+.tag.seq { flex: 0 1 auto; text-align: center; }
+.sound span { display: inline-block; animation: wave .6s ease-in-out infinite; }
+.sound { font-size: 1.25em; letter-spacing: .04em; }
 
 .panel { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: clamp(18px, 3.5vw, 30px); display: flex; flex-direction: column; gap: 16px; }
 h1, h2 { font-family: var(--display); font-weight: 600; margin: 0; line-height: 1.2; text-wrap: balance; }
@@ -62,7 +92,7 @@ h1 { font-size: clamp(1.6rem, 4.2vw, 2.3rem); }
 h2 { font-size: clamp(1.25rem, 3vw, 1.6rem); }
 p { margin: 0; max-width: 65ch; }
 .lead { color: var(--ink-soft); }
-.eyebrow { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--teal); font-weight: 700; }
+.eyebrow { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--teal-text); font-weight: 700; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .ask-box { display: flex; gap: 10px; align-items: stretch; }
 .ask-box textarea, textarea { flex: 1; min-width: 0; font: inherit; font-size: 1.15rem; color: var(--ink); background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 14px 16px; resize: vertical; min-height: 64px; }
@@ -73,11 +103,11 @@ button { font: inherit; cursor: pointer; border: none; }
 .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--saffron-deep); }
 .btn:disabled { opacity: .5; cursor: default; }
 .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--line); }
-.btn.teal { background: var(--teal); color: #fff; box-shadow: 0 3px 0 #1d5e5b; }
+.btn.teal { background: var(--teal-btn); color: var(--on-teal); box-shadow: 0 3px 0 var(--teal-btn-deep); }
 .icon-btn { flex: none; width: 56px; border-radius: 16px; background: var(--teal-soft); color: var(--teal); display: grid; place-items: center; }
 .icon-btn.live { background: var(--rose); color: #fff; animation: pulse 1.2s infinite; }
 .icon-btn svg { width: 24px; height: 24px; }
-.link { background: none; color: var(--teal); text-decoration: underline; text-underline-offset: 3px; padding: 0; font-size: .95rem; }
+.link { background: none; color: var(--teal-text); text-decoration: underline; text-underline-offset: 3px; padding: 0; font-size: .95rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { background: var(--paper); border: 1px solid var(--line); color: var(--ink); border-radius: 99px; padding: 7px 14px; font-size: .92rem; }
 .chip.home { background: var(--gold-soft); border-color: transparent; }
@@ -94,11 +124,37 @@ button { font: inherit; cursor: pointer; border: none; }
 .choices { display: grid; gap: 10px; }
 .choice { text-align: left; background: var(--paper); color: var(--ink); border: 2px solid var(--line); border-radius: 16px; padding: 14px 16px; font-size: 1.05rem; display: flex; gap: 12px; align-items: center; }
 .choice:hover:not(:disabled) { border-color: var(--teal); }
-.choice:disabled { opacity: .45; cursor: default; text-decoration: line-through; }
+.choice:disabled { opacity: .6; cursor: default; }
+.choice.locked:disabled { opacity: 1; color: var(--ink-soft); border-style: dashed; }
+.choice.chosen { border-color: var(--teal); background: var(--teal-soft); opacity: 1; }
+.choice .ctext { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.choice .need { font-size: .85rem; color: var(--need-ink); font-weight: 700; }
+.choice .need.ok { color: var(--teal-text); }
+.cluegrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.cluecard { min-width: 0; background: var(--paper); border: 2px dashed var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.cluecard[data-state="found"] { background: var(--gold-soft); border: 2px solid transparent; }
+.cluecard .kindtag { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--teal-text); font-weight: 700; }
+.cluecard .cardbody { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; min-width: 0; }
+.cluecard .cardfact { display: flex; gap: 10px; align-items: baseline; animation: rise .5s ease; }
+.cluecard .cardfact b { font-family: var(--display); font-weight: 600; flex: none; }
+.btn.small { font-size: .95rem; padding: 8px 18px; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt { background: var(--card); color: var(--ink); border: 2px solid var(--line); border-radius: 14px; padding: 9px 14px; font-size: 1rem; text-align: left; }
+.opt:hover:not(:disabled) { border-color: var(--teal); }
+.opt:disabled { opacity: .7; cursor: default; }
+.opt.picked { border-color: var(--teal); background: var(--teal-soft); opacity: 1; }
+.seqrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.seqrow span { background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 4px 10px; }
+.said { font-style: italic; color: var(--ink-soft); }
+.bridge { border-left: 4px solid var(--saffron); padding: 2px 0 2px 12px; font-style: italic; color: var(--ink-soft); }
+.clue.consequence { background: var(--teal-soft); }
+.pathlist { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; list-style: disc; }
+ol.pathlist { list-style: decimal; }
 .choice .k { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--teal-soft); color: var(--teal); display: grid; place-items: center; font-family: var(--display); font-weight: 600; }
 .result { border-radius: 16px; padding: 14px 16px; animation: rise .4s ease; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
-.result.good { background: var(--teal-soft); }
-.result.oops { background: var(--rose-soft); }
+.result { background: var(--gold-soft); }
+.result[data-quality="wise"] { background: var(--teal-soft); }
+.result .row { margin-top: 2px; }
 .check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
 .check-grid > div { min-width: 0; background: var(--paper); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
 .check-grid ul { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
@@ -115,12 +171,13 @@ button { font: inherit; cursor: pointer; border: none; }
 .foot { color: var(--ink-soft); font-size: .82rem; text-align: center; }
 
 /* Stage animation */
-.pip-move, .vil-move { transition: transform 1.3s cubic-bezier(.5,0,.3,1); }
+#pipAct, #vilAct, #obstIn { transform-origin: 0 0; }
+#obstRoll { transform-origin: 0 -40px; }
 .bob { animation: bob 2.6s ease-in-out infinite; }
 .blink { animation: blink 4.5s infinite; transform-box: fill-box; transform-origin: center; }
 .glow { animation: glow 2s ease-in-out infinite; }
 .sway { animation: sway 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
-.sparkle { animation: sparkle 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; cursor: pointer; }
+.sparkle { animation: sparkle 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 .hop { animation: hop .6s ease; }
 .shake { animation: shake .5s ease 2; }
 .cheer { animation: cheer .7s ease 2; }
@@ -135,9 +192,15 @@ button { font: inherit; cursor: pointer; border: none; }
 @keyframes shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 @keyframes cheer { 50% { transform: translateY(-18px) rotate(-6deg); } }
 @keyframes fall { from { transform: translateY(-40px); } to { transform: translateY(480px) rotate(200deg); } }
+@keyframes wave { 50% { transform: translateY(-7px) scale(1.15); } }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 @keyframes pulse { 50% { opacity: .7; } }
 @keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+@container (max-width: 520px) {
+  .bit { top: 40%; }
+  .tag { font-size: .58rem; padding: 2px 6px; }
+  .hud .empty { font-size: .62rem; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -153,12 +216,19 @@ button { font: inherit; cursor: pointer; border: none; }
 
   <div class="stage" id="stage" aria-hidden="false">
     <svg id="scene" viewBox="0 0 800 450" role="img" aria-label="Story scene"></svg>
+    <div class="bits" id="bits"></div>
     <div class="title-tag" id="titleTag">The Wonder Garden</div>
-    <div class="meter" id="meter" hidden><b id="meterName">Mischief</b><div class="bar"><i id="meterBar" style="width:100%"></i></div></div>
+    <div class="hud" id="hud" hidden>
+      <div class="pill" id="hearts" data-hearts="3" role="img" aria-label="Pip's hearts: 3 of 3"></div>
+      <div class="pill" id="pack" role="img" aria-label="Backpack: empty"></div>
+    </div>
+    <div class="meter" id="meter" data-power="3" hidden><b id="meterName">Mischief</b><div class="segs" id="meterSegs"><i></i><i></i><i></i><i></i><i></i></div></div>
+    <div class="caption" id="caption" hidden></div>
+    <button class="skip" id="skip" type="button" hidden>Skip</button>
   </div>
 
   <main class="panel" id="panel" aria-live="polite"></main>
-  <p class="foot">Pip never gives the answer. Each chapter hides a true clue, and the child pieces it together.</p>
+  <p class="foot">Pip never gives the answer. Every chapter hides true clues, every choice changes the story, and the child pieces the answer together.</p>
 </div>
 
 <script>
@@ -351,46 +421,432 @@ const DEFS = `<defs>
   <filter id="paper"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" seed="7"/><feColorMatrix values="0 0 0 0 0.45  0 0 0 0 0.4  0 0 0 0 0.32  0 0 0 0.5 0"/></filter>
 </defs>`;
 
-const svg = $("#scene");
-let stageState = { setting: "garden", night: false, pipX: 170, vilX: 640, villain: null, power: 1, obstacle: false, spark: null, friendly: false, petals: false };
+/* ---------- icons (items, hearts) ---------- */
+const ICON = {
+  key: '<circle cx="7.5" cy="12" r="4.5" fill="#f2c14e" stroke="#7a5a1e" stroke-width="1.6"/><circle cx="7.5" cy="12" r="1.5" fill="#7a5a1e"/><path d="M12 12h9M18 12v4M21 12v3" stroke="#7a5a1e" stroke-width="2" stroke-linecap="round" fill="none"/>',
+  map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" fill="#f3e3c7" stroke="#7a5a3c" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 4v14M15 6v14" stroke="#7a5a3c" stroke-width="1.2"/><path d="M10.5 9.5l3 3M13.5 9.5l-3 3" stroke="#d9576b" stroke-width="1.8" stroke-linecap="round"/>',
+  magnifier: '<circle cx="10" cy="10" r="6" fill="#d9f0ff" fill-opacity=".8" stroke="#5b4630" stroke-width="2"/><path d="M7 8a4 4 0 0 1 3-2" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/><path d="M14.5 14.5L21 21" stroke="#5b4630" stroke-width="3.2" stroke-linecap="round"/>',
+  rope: '<path d="M4 18c-2-5 3-8 7-6s7-1 8-6" stroke="#b98a4e" stroke-width="3.4" stroke-linecap="round" fill="none"/><path d="M4 18c-2-5 3-8 7-6s7-1 8-6" stroke="#e6c48e" stroke-width="1.2" stroke-dasharray="2 3" stroke-linecap="round" fill="none"/><circle cx="19" cy="6" r="2" fill="#b98a4e"/>',
+  torch: '<path d="M9 9h6l-1 11a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1z" fill="#6d7691" stroke="#3b4a6b" stroke-width="1.4"/><path d="M8 9h8l1-3H7z" fill="#8f98b2" stroke="#3b4a6b" stroke-width="1.4"/><path d="M12 5c-2-1-2-3 0-4 2 1 2 3 0 4z" fill="#ffd166"/><path d="M5 4l2 2M19 4l-2 2" stroke="#ffd166" stroke-width="1.6" stroke-linecap="round"/>',
+  feather: '<path d="M20 3C10 3 5 9 5 16l-2 5 5-3c7 0 12-6 12-15z" fill="#9fd8c0" stroke="#2f8c88" stroke-width="1.5" stroke-linejoin="round"/><path d="M4 20L15 9" stroke="#2f8c88" stroke-width="1.5" stroke-linecap="round"/>',
+  photo: '<rect x="3" y="5" width="18" height="14" rx="2" fill="#fff" stroke="#5b4630" stroke-width="1.6"/><rect x="5" y="7" width="14" height="8" fill="#cfe6f3"/><circle cx="9" cy="10" r="1.6" fill="#ffd166"/><path d="M5 15l4-4 3 3 3-3 4 4z" fill="#7db266"/>',
+  gear: '<circle cx="12" cy="12" r="6" fill="#c8913f" stroke="#7a5638" stroke-width="1.6"/><circle cx="12" cy="12" r="2.4" fill="#f6e7cd" stroke="#7a5638" stroke-width="1.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" stroke="#7a5638" stroke-width="2.6" stroke-linecap="round"/>',
+  seed: '<path d="M12 21c-5 0-7-4-6-8 1-4 4-8 6-10 2 2 5 6 6 10 1 4-1 8-6 8z" fill="#b98a4e" stroke="#7a5638" stroke-width="1.5"/><path d="M12 8c1 4 0 9 0 12" stroke="#7a5638" stroke-width="1.2" fill="none"/><path d="M12 3c1-1 3-1 4 0" stroke="#5daa6b" stroke-width="2" stroke-linecap="round" fill="none"/>',
+  umbrella: '<path d="M3 12a9 9 0 0 1 18 0c-1.5-1.5-3-1.5-4.5 0-1.5-1.5-3-1.5-4.5 0-1.5-1.5-3-1.5-4.5 0-1.5-1.5-3-1.5-4.5 0z" fill="#d9576b" stroke="#8a2f40" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 12v7a2 2 0 0 0 4 0" stroke="#5b4630" stroke-width="2" stroke-linecap="round" fill="none"/>',
+  balloon: '<path d="M12 2c4 0 6 3 6 6 0 4-3 7-6 9-3-2-6-5-6-9 0-3 2-6 6-6z" fill="#f28fa0" stroke="#b34b5c" stroke-width="1.5"/><path d="M10.5 16.5h3l-1.5 2z" fill="#b34b5c"/><path d="M12 18.5c-1 1.5 1 2.5 0 4" stroke="#5b4630" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M8.5 6a3 3 0 0 1 2-1.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/>',
+  shell: '<path d="M12 4C6 4 3 9 3 14c0 3 3 6 9 6s9-3 9-6c0-5-3-10-9-10z" fill="#f6b9a6" stroke="#b86d58" stroke-width="1.5"/><path d="M12 4v16M12 20L6 7M12 20l-9-5M12 20l6-13M12 20l9-5" stroke="#b86d58" stroke-width="1.1" fill="none"/>',
+};
+const ICON_IDS = Object.keys(ICON);
+const iconSvg = (id) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[id] || ICON.key}</svg>`;
+const HEART = '<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8-5.2-8-11a4.6 4.6 0 0 1 8-3 4.6 4.6 0 0 1 8 3c0 5.8-8 11-8 11z" fill="currentColor"/></svg>';
+const STAR = '<path d="M0 -12 L4 -4 L12 0 L4 4 L0 12 L-4 4 L-12 0 L-4 -4Z" fill="#ffd166" stroke="#d9951a" stroke-width="1.5"/>';
+const HELPERS = {
+  owl: `<ellipse cx="0" cy="-34" rx="26" ry="32" fill="#9a7550"/><ellipse cx="0" cy="-26" rx="16" ry="21" fill="#ead6b0"/><path d="M-22 -58 l-5 -14 l14 8Z M22 -58 l5 -14 l-14 8Z" fill="#7d5c3b"/><circle cx="-10" cy="-44" r="9" fill="#fff"/><circle cx="10" cy="-44" r="9" fill="#fff"/><circle cx="-10" cy="-44" r="4" fill="#24304f"/><circle cx="10" cy="-44" r="4" fill="#24304f"/><path d="M-4 -37 L0 -29 L4 -37Z" fill="#f2a93b"/><path d="M-11 -2h8M3 -2h8" stroke="#f2a93b" stroke-width="4" stroke-linecap="round"/>`,
+  snail: `<path d="M-36 0 Q-38 -10 -24 -10 L26 -10 Q36 -10 36 -2 L36 0Z" fill="#cdbfa6"/><path d="M28 -10 q2 -22 8 -32 M34 -10 q8 -16 16 -22" stroke="#cdbfa6" stroke-width="5" stroke-linecap="round" fill="none"/><circle cx="36" cy="-43" r="4" fill="#24304f"/><circle cx="51" cy="-33" r="4" fill="#24304f"/><circle cx="-6" cy="-30" r="24" fill="#b59ad6"/><circle cx="-6" cy="-30" r="15" fill="none" stroke="#7d62a8" stroke-width="3"/><circle cx="-6" cy="-30" r="6" fill="none" stroke="#7d62a8" stroke-width="3"/>`,
+  mouse: `<ellipse cx="0" cy="-20" rx="22" ry="20" fill="#c9c2d4"/><circle cx="-15" cy="-40" r="11" fill="#c9c2d4"/><circle cx="15" cy="-40" r="11" fill="#c9c2d4"/><circle cx="-15" cy="-40" r="6" fill="#f4b6c2"/><circle cx="15" cy="-40" r="6" fill="#f4b6c2"/><circle cx="-8" cy="-26" r="3.5" fill="#24304f"/><circle cx="8" cy="-26" r="3.5" fill="#24304f"/><ellipse cx="0" cy="-17" rx="4" ry="3" fill="#f4b6c2"/><path d="M20 -6 q22 4 20 -16" stroke="#e5a3b1" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M-26 -18l-14 -3M-26 -14l-14 2M26 -18l14 -3M26 -14l14 2" stroke="#7d788a" stroke-width="1.5"/>`,
+  robot: `<rect x="-20" y="-52" width="40" height="42" rx="9" fill="#9fb4cc" stroke="#5b6c85" stroke-width="2.5"/><rect x="-14" y="-44" width="28" height="18" rx="5" fill="#1d2140"/><circle cx="-6" cy="-35" r="3.5" fill="#7ff0d0"/><circle cx="6" cy="-35" r="3.5" fill="#7ff0d0"/><path d="M0 -52v-12" stroke="#5b6c85" stroke-width="3"/><circle cx="0" cy="-67" r="5" fill="#f28fa0"/><rect x="-16" y="-10" width="32" height="10" rx="5" fill="#5b6c85"/><path d="M-20 -30h-8M20 -30h8" stroke="#5b6c85" stroke-width="4" stroke-linecap="round"/><rect x="-10" y="-23" width="20" height="5" rx="2" fill="#fff" opacity=".6"/>`,
+};
+
+/* ---------- stage: scene, positions, step player ---------- */
+const svg = $("#scene"), NS = "http://www.w3.org/2000/svg";
+const STAGE_DEFAULT = { setting: "garden", night: false, pipX: 220, vilX: 670, villain: null, power: 3, obstacle: false, friendly: false, petals: false, title: null };
+let stageState = { ...STAGE_DEFAULT };
+const pos = { pip: { x: 220, y: 400 }, vil: { x: 670, y: 398, s: 1 }, obst: { x: 400, s: 1, alive: false } };
+let gen = 0; /* bumps on every repaint, so a late step can't touch a new scene */
+const vilBase = (p) => .6 + p * .12;
+const tfPip = () => `translate(${pos.pip.x}px, ${pos.pip.y}px)`;
+const tfVil = () => `translate(${pos.vil.x}px, ${pos.vil.y}px) scale(${pos.vil.s.toFixed(3)})`;
+const tfObst = () => `translate(${pos.obst.x}px, 380px)`;
 
 function paint(patch = {}) {
-  Object.assign(stageState, patch);
-  const st = stageState;
+  gen++; P.tok++; P.entrance = null;
+  const st = Object.assign(stageState, STAGE_DEFAULT, patch);
+  pos.pip = { x: st.pipX, y: 400 };
+  pos.vil = { x: st.vilX, y: 398, s: st.friendly ? .55 : vilBase(st.power) };
+  pos.obst = { x: 400, s: 1, alive: !!st.obstacle };
+  clearBits();
   let s = DEFS + world(st.setting, st.night);
-  if (st.obstacle) s += `<g id="obst" transform="translate(440 392)">${BOULDERS}</g>`;
+  if (st.obstacle) s += `<g id="obst" style="transform:${tfObst()}"><g id="obstIn"><g id="obstRoll">${BOULDERS}</g></g></g>`;
   if (st.villain) {
-    const sc = st.friendly ? .55 : .7 + st.power * .45;
     const col = st.friendly ? "#b9e4d5" : st.villain.color;
-    s += `<g class="vil-move" id="vil" style="transform: translate(${st.vilX}px, 398px) scale(${sc.toFixed(2)})"><g id="vilInner" filter="url(#wcs)">${villainSVG(st.villain.type, col)}</g></g>`;
+    s += `<g id="vil" style="transform:${tfVil()}"><g id="vilAct"><g id="vilInner" filter="url(#wcs)">${villainSVG(st.villain.type, col)}</g></g></g>`;
   }
-  s += `<g class="pip-move" id="pip" style="transform: translate(${st.pipX}px, 400px)"><g id="pipInner" filter="url(#wcs)">${PIP}</g></g>`;
-  if (st.spark) s += `<g id="spark" transform="translate(${st.spark[0]} ${st.spark[1]})" role="button" tabindex="0" aria-label="Clue sparkle">${SPARK}</g>`;
+  s += `<rect id="dark" width="800" height="450" fill="#0b1030" opacity="0" pointer-events="none"/>`;
+  s += `<g id="pip" style="transform:${tfPip()}"><g id="pipAct"><g id="pipInner" filter="url(#wcs)">${PIP}</g></g></g>`;
   if (st.petals) { const r = rng("petals"); for (let i = 0; i < 26; i++) s += `<g transform="translate(${(r() * 800).toFixed(0)} 0)"><ellipse class="petal" style="animation-delay:-${(r() * 3.5).toFixed(2)}s" rx="6" ry="3.5" fill="${["#f28fa0", "#ffd166", "#9fd8c0", "#b49be8"][i % 4]}"/></g>`; }
+  s += `<g id="fx"></g><g id="hot"></g>`;
   s += `<rect width="800" height="450" filter="url(#paper)" opacity=".55" style="mix-blend-mode:multiply" pointer-events="none"/>`;
   svg.innerHTML = s;
-  const sp = $("#spark", svg);
-  if (sp && st.onSpark) { sp.addEventListener("click", st.onSpark); sp.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); st.onSpark(); } }); }
   $("#titleTag").textContent = st.title || (SETTINGS[st.setting] || SETTINGS.garden).name;
-}
-function moveTo(pipX, vilX) {
-  const p = $("#pip", svg), v = $("#vil", svg);
-  stageState.pipX = pipX; if (vilX != null) stageState.vilX = vilX;
-  if (p) p.style.transform = `translate(${pipX}px, 400px)`;
-  if (v && vilX != null) v.style.transform = `translate(${vilX}px, 398px) scale(${(.7 + stageState.power * .45).toFixed(2)})`;
 }
 function animate(id, cls) {
   const n = $(id, svg); if (!n) return;
   n.classList.remove(cls); void n.getBoundingClientRect(); n.classList.add(cls);
 }
-function setMeter(villain, power) {
-  const m = $("#meter");
-  if (!villain) { m.hidden = true; return; }
-  m.hidden = false;
-  $("#meterName").textContent = `${villain.name}'s mischief`;
-  $("#meterBar").style.width = Math.max(0, power * 100) + "%";
+const clearBits = () => $("#bits").replaceChildren();
+
+/* player core: every step is awaitable.
+   #fast = no motion, ~30 ms a step. Reduced motion = no motion either, but each step jumps to its end
+   state and holds ~900 ms with its caption, so the story is still told.
+   Cancelling: P.tok changes whenever a scene is painted or the player stops. A step that wakes up after
+   that point (anim/pause resolve) never continues, so it can't draw into the next scene. */
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
+const HASHFAST = () => location.hash === "#fast";
+const NOMOTION = () => HASHFAST() || REDUCED.matches;
+const HOLD_MS = 900;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const NEVER = new Promise(() => {});
+const P = { tok: 0, skip: false, skipP: new Promise(() => {}), skipRes: null, running: new Set(), active: false, gen: -1, entrance: null, later: [] };
+const live = () => P.gen === gen;
+function anim(node, frames, ms, opts = {}) {
+  if (!node || NOMOTION() || P.skip) return Promise.resolve();
+  const ep = P.tok;
+  const a = node.animate(frames, { duration: ms, easing: "ease-in-out", ...opts });
+  P.running.add(a);
+  return a.finished.then(() => {}, () => {}).then(() => { P.running.delete(a); return ep === P.tok ? undefined : NEVER; });
+}
+const pause = (ms) => {
+  if (NOMOTION() || P.skip) return Promise.resolve();
+  const ep = P.tok;
+  return Promise.race([sleep(ms), P.skipP]).then(() => (ep === P.tok ? undefined : NEVER));
+};
+const flushLater = () => P.later.splice(0).forEach((n) => { try { n?.parentNode?.remove(); } catch {} });
+function setCaption(t) { const c = $("#caption"); c.textContent = t || ""; c.hidden = !t; }
+function skipNow() {
+  if (!P.active) return;
+  P.skip = true; P.skipRes?.();
+  P.running.forEach((a) => { try { a.finish(); } catch {} });
+}
+$("#skip").addEventListener("click", skipNow);
+function stopPlayer() {
+  P.tok++; P.active = false; P.skip = false;
+  P.running.forEach((a) => { try { a.finish(); } catch {} });
+  flushLater();
+  $("#skip").hidden = true; setCaption("");
 }
 
+/* SVG helpers */
+function fxAt(x, y, markup) {
+  const o = document.createElementNS(NS, "g"); o.setAttribute("transform", `translate(${x} ${y})`);
+  const i = document.createElementNS(NS, "g"); i.style.transformBox = "fill-box"; i.style.transformOrigin = "center";
+  i.innerHTML = markup; o.append(i);
+  const fx = $("#fx", svg); if (fx) fx.append(o);
+  return i;
+}
+const kill = (n) => { if (REDUCED.matches && !HASHFAST() && P.active && !P.skip) P.later.push(n); else { try { n?.parentNode?.remove(); } catch {} } };
+const T = (x, y, extra = "") => ({ transform: `translate(${x}px, ${y}px)${extra}` });
+const iconMark = (id, size = 48) => `<g transform="translate(${-size / 2} ${-size / 2}) scale(${size / 24})">${id && ICON[id] ? ICON[id] : `<g transform="translate(12 12) scale(.9)">${STAR}</g>`}</g>`;
+const popIn = (n, ms = 380) => anim(n, [{ transform: "scale(0)", opacity: 0 }, { transform: "scale(1.25)", opacity: 1, offset: .65 }, { transform: "scale(1)", opacity: 1 }], ms, { easing: "ease-out" });
+const popOut = (n, ms = 300) => anim(n, [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(.2)", opacity: 0 }], ms);
+const headY = () => pos.pip.y - 150;
+function bubbleSvg(x, y, text, w = 76, ink = "#26314f") {
+  return fxAt(x, y, `<ellipse rx="${w / 2}" ry="26" fill="#fff" stroke="${ink}" stroke-width="3"/><path d="M-10 22 l-4 16 l18 -12Z" fill="#fff" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/><path d="M-12 21 l16 4" stroke="#fff" stroke-width="5"/><text text-anchor="middle" y="10" font-family="Fredoka, Trebuchet MS, sans-serif" font-size="30" font-weight="700" fill="${ink}">${text}</text>`);
+}
+const starsMark = (n = 3, r = 30) => Array.from({ length: n }, (_, i) => { const a = i / n * Math.PI * 2; return `<g transform="translate(${(Math.cos(a) * r).toFixed(1)} ${(Math.sin(a) * r * .5).toFixed(1)}) scale(.7)">${STAR}</g>`; }).join("");
+
+/* movement */
+async function glide(who, x, y, ms) {
+  const n = $("#" + who, svg), g0 = gen; if (!n) return;
+  const p = pos[who];
+  const f = (xx, yy) => (who === "vil" ? `translate(${xx}px, ${yy}px) scale(${p.s.toFixed(3)})` : `translate(${xx}px, ${yy}px)`);
+  await anim(n, [{ transform: f(p.x, p.y) }, { transform: f(x, y) }], ms);
+  if (g0 !== gen) return;
+  p.x = x; p.y = y; n.style.transform = f(x, y);
+}
+async function pathTo(who, pts, ms) {
+  const n = $("#" + who, svg), g0 = gen; if (!n) return;
+  await anim(n, pts.map(([x, y]) => ({ transform: `translate(${x}px, ${y}px)` })), ms, { easing: "linear" });
+  if (g0 !== gen) return;
+  const [x, y] = pts[pts.length - 1]; pos[who].x = x; pos[who].y = y; n.style.transform = tfPip();
+}
+async function resize(ns, ms) {
+  const n = $("#vil", svg), g0 = gen; if (!n) return;
+  const p = pos.vil, from = p.s;
+  await anim(n, [{ transform: `translate(${p.x}px, ${p.y}px) scale(${from.toFixed(3)})` }, { transform: `translate(${p.x}px, ${p.y}px) scale(${ns.toFixed(3)})` }], ms);
+  if (g0 !== gen) return;
+  p.s = ns; n.style.transform = tfVil();
+}
+const hops = (id, ms) => { const n = Math.max(1, Math.round(ms / 300)); return anim($("#" + id, svg), [T(0, 0), T(0, -10), T(0, 0)], ms / n, { iterations: n }); };
+async function burst(x, y, n, fill, { dx = 70, up = 90, down = 60, ms = 850, r = 5 } = {}) {
+  if (NOMOTION() || P.skip) return;
+  const jobs = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI * (.12 + .76 * (n === 1 ? .5 : i / (n - 1))), vx = -Math.cos(a) * dx * (i % 2 ? 1 : .6), vy = -Math.sin(a) * up;
+    const g = fxAt(x, y, `<circle r="${r}" fill="${Array.isArray(fill) ? fill[i % fill.length] : fill}"/>`);
+    jobs.push(anim(g, [{ ...T(0, 0), opacity: 1 }, { ...T(vx, vy), opacity: 1, offset: .5 }, { ...T(vx * 1.5, vy + up + down), opacity: 0 }], ms, { easing: "ease-in" }).then(() => kill(g)));
+  }
+  await Promise.all(jobs);
+}
+
+const WALK = { left: 90, middle: 300, right: 735 };
+function walkX(a) {
+  if (a === "obstacle") return pos.obst.alive ? pos.obst.x - 78 * pos.obst.s - 38 : 400;
+  if (a === "villain") return $("#vil", svg) ? Math.max(120, pos.vil.x - 108 * pos.vil.s - 24) : 520;
+  return WALK[a] ?? WALK.middle;
+}
+
+/* the action vocabulary */
+const STEP = {
+  async walk(a) { const x = walkX(a), d = Math.abs(x - pos.pip.x); if (d < 6) return pause(250); const ms = Math.min(1500, 380 + d * 1.8); await Promise.all([glide("pip", x, 400, ms), hops("pipAct", ms)]); },
+  async jump() { await anim($("#pipAct", svg), [T(0, 0), T(0, -80), T(0, 0)], 650, { easing: "ease-out" }); },
+  async climb() {
+    const o = pos.obst; if (!o.alive) return STEP.jump();
+    const x0 = walkX("obstacle"), top = 380 - 88 * o.s + 6;
+    if (Math.abs(pos.pip.x - x0) > 10) await glide("pip", x0, 400, 500);
+    await pathTo("pip", [[x0, 400], [x0 + 38, top + 18], [o.x, top], [o.x + 52 * o.s, top + 4], [o.x + 82 * o.s + 40, 400]], 1500);
+  },
+  async slip() {
+    const st = fxAt(pos.pip.x + 90, pos.pip.y - 18, starsMark(3, 26));
+    anim(st, [{ transform: "rotate(0deg)", opacity: 0 }, { transform: "rotate(360deg)", opacity: 1, offset: .3 }, { transform: "rotate(900deg)", opacity: 1, offset: .85 }, { transform: "rotate(1080deg)", opacity: 0 }], 1700, { easing: "linear" });
+    await anim($("#pipAct", svg), [{ transform: "rotate(0deg)" }, { transform: "rotate(14deg)", offset: .15 }, { transform: "rotate(-10deg)", offset: .3 }, { transform: "rotate(88deg)", offset: .5 }, { transform: "rotate(88deg)", offset: .8 }, { transform: "rotate(0deg)" }], 1700);
+    kill(st);
+  },
+  async splash() {
+    const x = pos.pip.x, y = pos.pip.y;
+    const pip = anim($("#pipAct", svg), [{ transform: "scale(1,1)" }, { transform: "scale(1.15,.82)", offset: .2 }, { transform: "scale(.95,1.05)", offset: .5 }, { transform: "scale(1,1)" }], 1200);
+    const drips = fxAt(x, y - 60, `<g fill="#7fb8e6" stroke="#4a8fc4" stroke-width="1.5"><path d="M-22 -10 q4 8 0 12 q-4 -4 0 -12Z"/><path d="M0 0 q4 8 0 12 q-4 -4 0 -12Z"/><path d="M22 -14 q4 8 0 12 q-4 -4 0 -12Z"/></g>`);
+    anim(drips, [{ ...T(0, 0), opacity: 1 }, { ...T(0, 50), opacity: 1, offset: .6 }, { ...T(0, 70), opacity: 0 }], 1100, { iterations: 2, easing: "ease-in" });
+    await Promise.all([burst(x, y - 20, 12, ["#7fb8e6", "#a9d5f2", "#ffffff"], { dx: 90, up: 110, r: 7 }), pip]);
+    kill(drips);
+  },
+  async hide() {
+    const o = $("#obst", svg), p = $("#pipAct", svg); if (!o) return STEP.slip();
+    const x = pos.obst.x, g0 = gen, front = walkX("obstacle");
+    if (Math.abs(pos.pip.x - front) > 10) await glide("pip", front, 400, 600);
+    if (g0 === gen) svg.insertBefore(o, $("#fx", svg));
+    await Promise.all([glide("pip", x, 400, 700), anim(p, [{ transform: "scale(1)" }, { transform: "scale(.5)" }], 700)]);
+    if (g0 === gen) p && (p.style.transform = "scale(.5)");
+    await pause(900);
+    await Promise.all([glide("pip", front, 400, 600), anim(p, [{ transform: "scale(.5)" }, { transform: "scale(1)" }], 600)]);
+    if (g0 !== gen) return;
+    p.style.transform = ""; svg.insertBefore(o, $("#vil", svg) || $("#dark", svg));
+  },
+  async shine() {
+    const x = pos.pip.x + 52, y = pos.pip.y - 24;
+    const beam = fxAt(x, y, `<defs><linearGradient id="bm" x1="0" x2="1"><stop offset="0" stop-color="#fff3b0" stop-opacity=".95"/><stop offset="1" stop-color="#fff3b0" stop-opacity="0"/></linearGradient></defs><path d="M0 -4 L330 -90 L330 80 L0 8Z" fill="url(#bm)"/>`);
+    beam.style.transformOrigin = "0% 50%";
+    await anim(beam, [{ opacity: 0, transform: "scaleX(.2)" }, { opacity: 1, transform: "scaleX(1)", offset: .25 }, { opacity: .6, offset: .5 }, { opacity: 1, offset: .75 }, { opacity: 0 }], 1500);
+    kill(beam);
+  },
+  async think() { const b = bubbleSvg(pos.pip.x + 52, headY(), "?", 64); await popIn(b); await pause(850); await popOut(b); kill(b); },
+  async cheer() {
+    const x = pos.pip.x, y = pos.pip.y;
+    anim($("#pipAct", svg), [{ transform: "translateY(0) rotate(0deg)" }, { transform: "translateY(-34px) rotate(-7deg)" }, { transform: "translateY(0) rotate(0deg)" }, { transform: "translateY(-34px) rotate(7deg)" }, { transform: "translateY(0) rotate(0deg)" }], 1100);
+    await burst(x, y - 150, 8, ["#ffd166", "#f28fa0", "#9fd8c0"], { dx: 70, up: 50, down: 40, r: 5 });
+  },
+  async dizzy() {
+    const st = fxAt(pos.pip.x, headY() + 36, starsMark(4, 34));
+    anim(st, [{ transform: "rotate(0deg)" }, { transform: "rotate(720deg)" }], 1500, { easing: "linear" });
+    await anim($("#pipAct", svg), [{ transform: "rotate(0deg)" }, { transform: "rotate(-9deg)" }, { transform: "rotate(9deg)" }, { transform: "rotate(-9deg)" }, { transform: "rotate(9deg)" }, { transform: "rotate(0deg)" }], 1500);
+    kill(st);
+  },
+  async run_away() { await Promise.all([glide("pip", -120, 400, 650), hops("pipAct", 650)]); await pause(350); await Promise.all([glide("pip", 90, 400, 700), hops("pipAct", 700)]); },
+  async push() {
+    const o = pos.obst; if (!o.alive) return STEP.walk("middle");
+    const front = walkX("obstacle"), g0 = gen;
+    if (Math.abs(pos.pip.x - front) > 10) await glide("pip", front, 400, 600);
+    const nx = Math.min(640, o.x + 190), d = nx - o.x, on = $("#obst", svg), roll = $("#obstRoll", svg);
+    anim($("#pipAct", svg), [{ transform: "rotate(0deg)" }, { transform: "rotate(12deg)", offset: .2 }, { transform: "rotate(12deg)", offset: .8 }, { transform: "rotate(0deg)" }], 1700);
+    anim(roll, [{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }], 1400, { delay: 300, easing: "ease-in-out" });
+    await Promise.all([anim(on, [{ transform: tfObst() }, { transform: `translate(${nx}px, 380px)` }], 1400, { delay: 300 }), glide("pip", front + d * .55, 400, 1700)]);
+    if (g0 !== gen) return; o.x = nx; if (on) on.style.transform = tfObst();
+  },
+  async dig() {
+    const x = pos.pip.x + 70, y = pos.pip.y;
+    anim($("#pipAct", svg), [{ transform: "scale(1,1)" }, { transform: "scale(1.05,.8)", offset: .1 }, { transform: "scale(1,.88)", offset: .5 }, { transform: "scale(1.05,.8)", offset: .6 }, { transform: "scale(1,1)" }], 1800);
+    const hole = fxAt(x, y + 4, `<ellipse rx="34" ry="9" fill="#5d4630" opacity=".85"/>`); popIn(hole, 300);
+    for (let k = 0; k < 3; k++) { await burst(x, y - 4, 9, ["#8a6646", "#6b4e32", "#a37c55"], { dx: 50, up: 90, down: 40, ms: 520, r: 6 }); }
+    kill(hole);
+  },
+  async fly() {
+    const pip = $("#pip", svg), act = $("#pipAct", svg); if (!act) return; const g0 = gen;
+    const b = document.createElementNS(NS, "g"); b.innerHTML = `<g transform="translate(0 -205) scale(.85)"><path d="M0 -62 C-34 -62 -44 -22 -30 6 C-22 22 -8 32 0 40 C8 32 22 22 30 6 C44 -22 34 -62 0 -62Z" fill="#f28fa0" stroke="#b34b5c" stroke-width="3"/><path d="M-18 -42 q8 -10 20 -10" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".8"/><path d="M-8 40h16l-8 10z" fill="#b34b5c"/></g><path d="M0 -150 Q-7 -158 0 -166" stroke="#5b4630" stroke-width="2.5" fill="none"/>`;
+    b.style.transformBox = "fill-box"; b.style.transformOrigin = "center";
+    act.append(b);
+    await popIn(b, 400);
+    await anim(pip, [{ transform: tfPip() }, { transform: `translate(${pos.pip.x}px, ${pos.pip.y - 100}px)` }, { transform: `translate(${pos.pip.x}px, ${pos.pip.y - 108}px)`, offset: .6 }, { transform: tfPip() }], 2600);
+    await popOut(b, 300); b.remove(); if (g0 !== gen) return;
+  },
+  async build() {
+    const x = pos.pip.x + 78, y = pos.pip.y - 40;
+    const h = fxAt(x, y, `<g transform="translate(0 -4)"><rect x="-3" y="-30" width="6" height="42" rx="3" fill="#8a5a2e" transform="rotate(-20)"/><rect x="-17" y="-38" width="30" height="14" rx="3" fill="#7d8191" transform="rotate(-20)"/></g>`);
+    h.style.transformOrigin = "50% 100%";
+    const jobs = [];
+    for (let k = 0; k < 3; k++) { await anim(h, [{ transform: "rotate(-50deg)" }, { transform: "rotate(30deg)" }], 260, { easing: "ease-in" }); jobs.push(burst(x + 12, y + 14, 6, ["#ffd166", "#fff3b0", "#f2a93b"], { dx: 40, up: 40, down: 30, ms: 500, r: 3.5 })); await anim(h, [{ transform: "rotate(30deg)" }, { transform: "rotate(-50deg)" }], 200); }
+    await Promise.all(jobs); kill(h);
+  },
+  async sleep() {
+    const x = pos.pip.x, y = pos.pip.y;
+    const zs = [0, 1, 2].map((k) => { const g = fxAt(x + 40 + k * 18, y - 150 - k * 24, `<text text-anchor="middle" font-family="Fredoka, Trebuchet MS, sans-serif" font-weight="700" font-size="${26 + k * 8}" fill="#26314f" stroke="#fff" stroke-width="4" paint-order="stroke">Z</text>`); return g; });
+    const jobs = zs.map((g, k) => anim(g, [{ ...T(0, 10), opacity: 0 }, { ...T(10, -14), opacity: 1, offset: .4 }, { ...T(24, -40), opacity: 0 }], 1500, { delay: k * 380, fill: "backwards" }));
+    await Promise.all([anim($("#pipAct", svg), [{ transform: "scale(1,1)" }, { transform: "scale(1.04,.86)", offset: .3 }, { transform: "scale(1.04,.86)", offset: .85 }, { transform: "scale(1,1)" }], 2200), Promise.all(jobs)]);
+    zs.forEach(kill);
+  },
+  /* villain */
+  async villain_laugh() {
+    const v = $("#vil", svg); if (!v) return;
+    const b = bubbleSvg(pos.vil.x - 24, pos.vil.y - 168 * pos.vil.s - 40, "HA!", 86);
+    popIn(b, 300);
+    await anim($("#vilAct", svg), [T(0, 0), T(-9, 0), T(9, 0), T(-9, -6), T(9, 0), T(-6, 0), T(0, 0)], 900, { easing: "linear" });
+    await pause(250); await popOut(b, 250); kill(b);
+  },
+  async villain_grow() { if ($("#vil", svg)) { await resize(Math.min(1.55, pos.vil.s * 1.3), 800); await pause(250); } },
+  async villain_shrink() { if ($("#vil", svg)) { await resize(Math.max(.4, pos.vil.s * .72), 800); await pause(250); } },
+  async villain_steal(a, ctx) {
+    const v = $("#vil", svg); if (!v) return;
+    const x0 = pos.vil.x, tx = pos.pip.x + 118;
+    await glide("vil", tx, 398, 420);
+    if (!ctx.stealId) { /* nothing to take: a grab at the backpack, then back empty-handed */
+      await anim($("#vilAct", svg), [T(0, 0), T(-14, 0), T(0, 0), T(-14, 0), T(0, 0)], 600);
+      await pause(300); await glide("vil", x0, 398, 650); return;
+    }
+    const it = fxAt(pos.pip.x + 56, pos.pip.y - 120, iconMark(ctx.stealId, 44)); await popIn(it, 260);
+    await anim(it, [T(0, 0), T(tx - pos.pip.x - 56, -40)], 300); kill(it);
+    const carried = document.createElementNS(NS, "g"); carried.setAttribute("transform", "translate(-20 -190)"); carried.innerHTML = iconMark(ctx.stealId, 44); const act = $("#vilAct", svg); act?.append(carried);
+    await glide("vil", x0, 398, 650); await pause(450); carried.remove();
+  },
+  async villain_trip() {
+    const v = $("#vilAct", svg); if (!v) return;
+    const st = fxAt(pos.vil.x + 80, pos.vil.y - 30, starsMark(3, 28));
+    anim(st, [{ transform: "rotate(0deg)", opacity: 0 }, { transform: "rotate(300deg)", opacity: 1, offset: .35 }, { transform: "rotate(900deg)", opacity: 0 }], 1500, { easing: "linear" });
+    await anim(v, [{ transform: "rotate(0deg)" }, { transform: "rotate(-12deg)", offset: .15 }, { transform: "rotate(80deg)", offset: .4 }, { transform: "rotate(80deg)", offset: .75 }, { transform: "rotate(0deg)" }], 1500);
+    kill(st);
+  },
+  async villain_flee() { if ($("#vil", svg)) await glide("vil", 980, 398, 1000); },
+  async villain_sneak() { if ($("#vil", svg)) { const x = Math.max(pos.pip.x + 150, pos.vil.x - 120), ms = 800; await Promise.all([glide("vil", x, 398, ms), hops("vilAct", ms)]); } },
+  /* world */
+  async rain() {
+    const tint = fxAt(0, 0, `<rect width="800" height="450" fill="#3b4a6b" opacity=".22"/>`);
+    let m = ""; for (let x = -10; x < 820; x += 26) for (let y = -80; y < 460; y += 70) m += `<path d="M${x + ((y * 7) % 19)} ${y} l-7 24" stroke="#bcd7f2" stroke-width="2.4" stroke-linecap="round" opacity=".85"/>`;
+    const r = fxAt(0, 0, m); r.style.transformBox = "view-box"; r.style.transformOrigin = "0 0";
+    await anim(r, [T(0, 0), T(0, 70)], 230, { iterations: 7, easing: "linear" });
+    kill(r); kill(tint);
+  },
+  async wind() {
+    let m = ""; for (let i = 0; i < 14; i++) { const y = 70 + i * 24 + (i % 3) * 7, x = 700 + (i * 53) % 300; m += `<path d="M${x} ${y} q40 -14 80 0 q22 6 44 -6" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".8"/>`; if (i % 3 === 0) m += `<path d="M${x + 20} ${y - 6} q10 -12 22 -4 q-6 12 -22 4Z" fill="#7cc27e"/>`; }
+    const w = fxAt(0, 0, m); w.style.transformBox = "view-box"; w.style.transformOrigin = "0 0";
+    anim($("#pipAct", svg), [{ transform: "rotate(0deg)" }, { transform: "rotate(-9deg)", offset: .3 }, { transform: "rotate(-9deg)", offset: .75 }, { transform: "rotate(0deg)" }], 1600);
+    await anim(w, [T(0, 0), T(-1100, 0)], 1600, { easing: "ease-in" });
+    kill(w);
+  },
+  async dark() { const d = $("#dark", svg); if (d) { await anim(d, [{ opacity: 0 }, { opacity: .55 }], 900); if (live()) d.setAttribute("opacity", ".55"); } },
+  async light() {
+    const d = $("#dark", svg); const f = fxAt(0, 0, `<rect width="800" height="450" fill="#fff8d6"/>`);
+    anim(f, [{ opacity: .85 }, { opacity: 0 }], 900);
+    if (d) await anim(d, [{ opacity: Number(d.getAttribute("opacity")) || 0 }, { opacity: 0 }], 900);
+    if (d && live()) d.setAttribute("opacity", "0"); kill(f);
+  },
+  async obstacle_break() {
+    const o = pos.obst, on = $("#obst", svg); if (!o.alive || !on) return pause(300);
+    anim($("#obstIn", svg), [{ transform: `scale(${o.s})`, opacity: 1 }, { transform: `scale(${o.s * 1.2})`, opacity: 1, offset: .3 }, { transform: `scale(${o.s * 1.2})`, opacity: 0 }], 800);
+    await burst(o.x, 340, 10, ["#8b8f9e", "#9fa3b1", "#7d8191"], { dx: 120, up: 90, down: 40, r: 9 });
+    if (live()) { o.alive = false; on.style.display = "none"; }
+  },
+  async obstacle_grow() {
+    const o = pos.obst, ob = $("#obstIn", svg); if (!o.alive || !ob) return pause(300);
+    const ns = Math.min(1.6, o.s * 1.45);
+    await anim(ob, [{ transform: `scale(${o.s})` }, { transform: `scale(${ns * 1.08})`, offset: .7 }, { transform: `scale(${ns})` }], 900);
+    if (live()) { o.s = ns; ob.style.transform = `scale(${ns})`; }
+  },
+  async item_appear(a, ctx) {
+    const id = ctx.itemId, x = pos.pip.x + 76, g = fxAt(x, 300, iconMark(id, 58));
+    const glow = fxAt(x, 300, `<circle r="40" fill="#fff6c2" opacity=".6"/>`);
+    popIn(glow, 400);
+    await popIn(g, 450);
+    await anim(g, [T(0, 0), T(0, -12), T(0, 0), T(0, -12), T(0, 0)], 1000);
+    await anim(g, [{ ...T(0, 0), opacity: 1 }, { ...T(-x + 60, -220), opacity: 0, transform: `translate(${-x + 60}px, -220px) scale(.3)` }], 650, { easing: "ease-in" });
+    kill(g); kill(glow);
+  },
+  async item_lost(a, ctx) {
+    const id = ctx.stealId, x = pos.pip.x + 20, g = fxAt(x, pos.pip.y - 190, iconMark(id, 52));
+    await popIn(g, 300);
+    await anim(g, [{ ...T(0, 0), opacity: 1 }, { ...T(190, -130), opacity: 0, transform: "translate(190px, -130px) rotate(540deg) scale(.4)" }], 900, { easing: "ease-in" });
+    kill(g);
+    await burst(x + 190, pos.pip.y - 300, 6, ["#ffffff", "#e4e1ee"], { dx: 40, up: 20, down: 10, ms: 400, r: 8 });
+  },
+  async rainbow() {
+    const cols = ["#e8575f", "#f2a93b", "#f4d35e", "#7cc27e", "#5ba4cf", "#9a78d1"];
+    const g = fxAt(0, 0, cols.map((c, i) => `<path pathLength="1" d="M${110 + i * 11} 350 A${290 - i * 11} ${250 - i * 11} 0 0 1 ${690 - i * 11} 350" stroke="${c}" stroke-width="11" fill="none" stroke-dasharray="1" opacity=".7"/>`).join(""));
+    await Promise.all([...g.querySelectorAll("path")].map((p, i) => anim(p, [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], 1100, { delay: i * 90, fill: "backwards" })));
+  },
+  async confetti() {
+    const cs = ["#f28fa0", "#ffd166", "#9fd8c0", "#b49be8", "#6d97c9"], jobs = [], r = rng("confetti");
+    for (let i = 0; i < 44; i++) { const x = r() * 800, g = fxAt(x, -20, `<rect width="10" height="16" rx="2" fill="${cs[i % 5]}"/>`); jobs.push(anim(g, [{ transform: "translateY(0) rotate(0deg)" }, { transform: `translateY(500px) rotate(${360 + r() * 360}deg)` }], 1500 + r() * 700, { delay: r() * 500, easing: "ease-in", fill: "backwards" }).then(() => kill(g))); }
+    await Promise.all(jobs);
+  },
+};
+const VERBS = Object.keys(STEP);
+const WALKS = ["left", "middle", "obstacle", "villain", "right"];
+const CAPTION = {
+  walk: (a) => ({ left: "Pip walks to the left.", middle: "Pip walks to the middle.", obstacle: "Pip walks up to the obstacle.", villain: "Pip marches up to the villain.", right: "Pip hurries to the right." }[a] || "Pip walks."),
+  jump: () => "Pip jumps!", climb: () => "Pip climbs over the obstacle.", slip: () => "Whoops! Pip slips and sees stars.", splash: () => "Splash! Pip gets soaked.", hide: () => "Pip hides behind the obstacle.",
+  shine: () => "Pip shines the lantern.", think: () => "Pip thinks hard.", cheer: () => "Pip cheers!", dizzy: () => "Pip feels dizzy.", run_away: () => "Pip runs away!",
+  push: () => "Pip pushes the obstacle.", dig: () => "Pip digs.", fly: () => "A balloon lifts Pip into the air.", build: () => "Pip builds something.", sleep: () => "Pip curls up for a nap. Zzz.",
+  villain_laugh: (a, c) => `${c.villainName} laughs: HA!`, villain_grow: (a, c) => `${c.villainName} puffs up bigger.`, villain_shrink: (a, c) => `${c.villainName} shrinks a little.`,
+  villain_steal: (a, c) => (c.stealId ? `${c.villainName} dashes in and grabs something!` : c.packEmpty ? `${c.villainName} grabs at the backpack and finds it empty!` : `${c.villainName} grabs at the backpack but comes away empty-handed!`), villain_trip: (a, c) => `${c.villainName} trips and tumbles over.`, villain_flee: (a, c) => `${c.villainName} scampers away.`, villain_sneak: (a, c) => `${c.villainName} sneaks closer.`,
+  rain: () => "Rain pours down.", wind: () => "A big gust of wind blows past.", dark: () => "The light fades.", light: () => "The light comes back.",
+  obstacle_break: () => "The obstacle crumbles away.", obstacle_grow: () => "The obstacle grows bigger!", item_appear: () => "Something useful turns up.", item_lost: () => "Something slips away.", rainbow: () => "A rainbow appears.", confetti: () => "Confetti!",
+};
+async function play(acts, ctx) {
+  if (P.entrance) { const g0 = gen; await P.entrance; if (g0 !== gen) return false; } /* let Pip finish walking in first */
+  stopPlayer(); const my = P.tok;
+  P.gen = gen; P.active = true; P.skip = false; P.skipP = new Promise((r) => { P.skipRes = r; });
+  $("#skip").hidden = false;
+  for (const raw of acts) {
+    if (my !== P.tok) return false;
+    const [verb, arg = ""] = String(raw).split(":");
+    if (!STEP[verb]) continue;
+    setCaption(CAPTION[verb](arg, ctx));
+    try { await STEP[verb](arg, ctx); } catch (e) { console.warn("step failed", raw, e); }
+    if (my !== P.tok) return false;
+    if (HASHFAST()) await sleep(30);
+    else if (REDUCED.matches && !P.skip) await Promise.race([sleep(HOLD_MS), P.skipP]);
+    flushLater();
+  }
+  if (my !== P.tok) return false;
+  P.active = false; $("#skip").hidden = true; flushLater();
+  setTimeout(() => { if (my === P.tok) setCaption(""); }, 900);
+  return true;
+}
+
+/* HUD: hearts, backpack, villain meter */
+const showHud = (on) => { $("#hud").hidden = !on; $("#meter").hidden = !on; };
+function drawHearts() {
+  const h = state.g.hearts, box = $("#hearts");
+  box.dataset.hearts = String(h); box.setAttribute("aria-label", `Pip's hearts: ${h} of 3`);
+  box.innerHTML = [0, 1, 2].map((i) => `<span class="hw${i < h ? "" : " lost"}">${HEART}</span>`).join("");
+}
+function drawPack() {
+  const g = state.g, box = $("#pack"), items = state.story.items;
+  box.dataset.items = g.items.join(",");
+  box.setAttribute("aria-label", g.items.length ? "Backpack: " + g.items.map((id) => items.find((x) => x.id === id)?.name).filter(Boolean).join(", ") : "Backpack: empty");
+  box.replaceChildren();
+  if (!g.items.length) { box.append(el("span", { class: "empty", text: "Backpack: empty" })); return; }
+  for (const id of g.items) { const it = items.find((x) => x.id === id); if (!it) continue; const sp = el("span", { class: "it", title: it.name, "data-item": id }); sp.innerHTML = iconSvg(it.icon); box.append(sp); }
+}
+function drawMeter() {
+  const g = state.g, m = $("#meter");
+  m.dataset.power = String(g.power); m.setAttribute("aria-label", `${state.story.villain.name}'s mischief: ${g.power} of 5`);
+  $("#meterName").textContent = `${state.story.villain.name}'s mischief`;
+  [...$("#meterSegs").children].forEach((i, k) => i.classList.toggle("on", k < g.power));
+}
+const drawHud = () => { drawHearts(); drawPack(); drawMeter(); };
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+async function applyEffects(e) {
+  const g = state.g, jobs = [];
+  if (e.lose && g.items.includes(e.lose)) {
+    const node = $(`#pack [data-item="${e.lose}"]`);
+    await anim(node, [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(1.4) rotate(-12deg)", opacity: 1, offset: .3 }, { transform: "scale(0)", opacity: 0 }], 550);
+    g.items = g.items.filter((x) => x !== e.lose); drawPack();
+  }
+  if (e.gain && !g.items.includes(e.gain)) { g.items.push(e.gain); drawPack(); jobs.push(anim($(`#pack [data-item="${e.gain}"]`), [{ transform: "scale(0)" }, { transform: "scale(1.6)", offset: .6 }, { transform: "scale(1)" }], 600, { easing: "ease-out" })); }
+  const ph = g.hearts, pp = g.power;
+  g.hearts = clamp(g.hearts + e.hearts, 1, 3); g.power = clamp(g.power + e.villain, 0, 5);
+  if (g.hearts !== ph) { drawHearts(); const n = $("#hearts").children[(g.hearts < ph ? ph : g.hearts) - 1]; jobs.push(anim(n, g.hearts < ph ? [{ transform: "scale(1)" }, { transform: "scale(1.6) rotate(-14deg)", offset: .3 }, { transform: "scale(.8) rotate(10deg)", offset: .6 }, { transform: "scale(1)" }] : [{ transform: "scale(.4)" }, { transform: "scale(1.6)", offset: .6 }, { transform: "scale(1)" }], 700)); }
+  if (g.power !== pp) { drawMeter(); jobs.push(anim($("#meter"), [{ transform: "scale(1)" }, { transform: "scale(1.12)", offset: .3 }, { transform: "scale(1)" }], 600)); jobs.push(resize(vilBase(g.power), 800)); }
+  else jobs.push(resize(vilBase(g.power), 500));
+  await Promise.all(jobs);
+}
 /* ---------- capabilities ---------- */
 let sampleFn = null, tts = null, dict = null;
 (async () => {
@@ -423,7 +879,7 @@ function micBtn(target) {
   return b;
 }
 
-/* ---------- sample story (works without live AI) ---------- */
+/* ---------- sample story (works without live AI), schema v2 ---------- */
 const DEMO = {
   question: "Could a camera tell when a fox visits?",
   title: "Pip and the Copycat Camera Caper",
@@ -431,107 +887,283 @@ const DEMO = {
   villain: { name: "Captain Copycat", type: "gremlin", color: "#e0703a", motive: "loves tricking machines with anything orange" },
   learning_aim: "Notice how a wildlife camera decides what it has seen, and why it can be fooled.",
   facts_to_check: [
-    "Many wildlife cameras wake up when a motion sensor detects something warm moving.",
-    "Computer vision learns what a fox looks like from lots of labelled example photos.",
-    "A program that has only seen orange foxes may confuse other orange shapes with a fox.",
-    "At night many cameras record in black and white using infrared light."
+    "Many wildlife cameras wake up when a passive-infrared (PIR) sensor detects something warm moving.",
+    "Image recognisers learn from lots of example photos that people have labelled, such as 'fox' and 'not a fox'.",
+    "A program that has only seen orange foxes may confuse other orange, fluffy shapes with a fox.",
+    "At night many cameras record black-and-white pictures using infrared light.",
+    "Real foxes leave small paw-prints in a roughly straight line. Using several signals together (warmth, movement, shape) is harder to fool than using one."
   ],
   materials: ["Paper and crayons for mapping", "Optional: an old wildlife-camera photo set"],
   needs_teacher: false, teacher_note: "",
-  scenes: [
-    { setting: "garden", time: "day",
-      narration: "BEEP! The garden camera flashes: FOX DETECTED! Pip rushes over with the lantern swinging. But there is no fox. There is only Grandma's orange scarf, flapping on the washing line. From behind the fence comes a giggle.",
-      obstacle: "Captain Copycat has hung orange things all over the garden.",
-      clue: "The camera's screen shows its best guess: 'fox, 61% sure'. It is guessing, not knowing.",
+  items: [{ id: "photo", name: "Photo book", icon: "photo" }, { id: "magnifier", name: "Magnifier", icon: "magnifier" }],
+  chapters: [
+    { beat: "ki", setting: "garden", time: "day",
+      narration: "BEEP! The garden camera flashes: FOX DETECTED! Pip dashes over with the lantern swinging. But there is no fox. There is only Grandma's orange scarf, flapping on the washing line. From behind a pile of flowerpots comes a giggle.",
+      clues: [
+        { kind: "spot", label: "the camera screen", text: "The screen says: fox, 61% sure. The camera is guessing from what it sees, not knowing for certain." },
+        { kind: "compare", question: "What do the scarf and a fox have in common?", a: "Both are orange with fluffy edges", b: "Both are made of wool", answer: "a", text: "Both are orange with soft, fluffy edges. A camera that judges by colour and shape can mix them up." }
+      ],
       choices: [
-        { text: "Look at what the scarf and a fox have in common", good: true, result: "Both are orange and fluffy at the edges. Pip scribbles a note: the camera might be looking at colour and shape." },
-        { text: "Shout 'That's a SCARF!' at the camera", good: false, result: "The camera doesn't answer. It doesn't have ears, only a lens. Maybe look at what it sees instead?" },
-        { text: "Hide the camera in a bush", good: false, result: "Now it can only see leaves. Captain Copycat cheers. Pip needs to understand the camera, not hide it." }
+        { text: "Take photos of the scarf and of real foxes, and compare them", quality: "wise", needs: null,
+          acts: ["walk:obstacle", "think", "item_appear", "cheer"],
+          outcome: "Pip snaps pictures of the scarf and of the foxes in the garden book. Captain Copycat stops giggling and peeks out to see.",
+          reveals: "Putting pictures side by side shows what looks the same: colour and fluffy edges. Pip also now has a photo book to help the camera.",
+          bridge: "Because of that, Pip tucked the photo book into the backpack and followed the orange paw-prints into the Tinker Workshop, where the camera's brain lives.",
+          effects: { villain: -1, hearts: 0, gain: "photo", lose: null } },
+        { text: "Shout 'That's a SCARF!' at the camera", quality: "risky", needs: null,
+          acts: ["walk:middle", "jump", "villain_laugh"],
+          outcome: "The camera blinks and does not answer. It has a lens, not ears. Captain Copycat snorts with laughter.",
+          reveals: "Shouting did not change the camera's guess. It only uses what its lens and sensors pick up, so Pip has to look at what the camera sees.",
+          bridge: "Because of that, Pip stopped shouting and followed the orange paw-prints into the Tinker Workshop to find out how the camera makes its guesses.",
+          effects: { villain: 0, hearts: 0, gain: null, lose: null } },
+        { text: "Hide the camera in a bush", quality: "silly", needs: null,
+          acts: ["walk:obstacle", "hide", "villain_laugh", "obstacle_grow"],
+          outcome: "Pip tucks the camera into the bush, and now it can only see leaves. Captain Copycat laughs so hard that the flowerpots wobble and grow.",
+          reveals: "A camera can only guess about what it can see. Hiding it did not teach it anything, so Pip needs to understand how it decides.",
+          bridge: "Because of that, Pip fished the camera back out of the bush and followed the orange paw-prints into the Tinker Workshop.",
+          effects: { villain: 1, hearts: -1, gain: null, lose: null } }
       ] },
-    { setting: "workshop", time: "day",
-      narration: "Pip follows orange paw-prints into the Tinker Workshop. Inside, Captain Copycat is painting stripes on a pumpkin. 'If it's orange and roundish,' he cackles, 'the camera will think it's a fox!'",
-      obstacle: "A wobbly tower of orange paint pots blocks the way to the camera's computer.",
-      clue: "On the computer is a folder called LEARNED FROM. It holds 500 fox photos, and every single fox is orange, in daylight.",
+    { beat: "sho", setting: "workshop", time: "day",
+      narration: "Pip follows orange paw-prints into the Tinker Workshop. Captain Copycat is painting stripes on a pumpkin. \"Orange and roundish,\" he cackles, \"the camera will think it's a fox!\" On the computer, a folder called LEARNED FROM blinks.",
+      clues: [
+        { kind: "ask", character: "owl", line: "Hoo! A camera learns from example photos. Somebody labels each one 'fox' or 'not a fox'.", text: "A camera learns what a fox looks like from lots of example photos that people have labelled 'fox' or 'not a fox'." },
+        { kind: "pattern", sequence: ["orange fox", "orange fox", "orange fox"], options: ["orange fox", "grey fox", "blue fox"], answer: "orange fox", text: "Every photo in LEARNED FROM shows an orange fox. A camera that has only seen orange foxes may think anything orange and furry could be a fox." }
+      ],
       choices: [
-        { text: "Give the camera photos of scarves and pumpkins labelled 'not a fox'", good: true, result: "The camera studies the new pictures. Its guess for the pumpkin drops to 'fox, 9% sure'. Copycat's paintbrush droops." },
-        { text: "Paint the pumpkin blue", good: false, result: "Copycat just paints it orange again, faster. Is there a way to help the camera learn the difference?" },
-        { text: "Unplug the computer to stop the trick", good: false, result: "The screen goes dark. Now the camera can't learn anything at all." }
+        { text: "Give the camera new photos of scarves and pumpkins labelled 'not a fox'", quality: "wise", needs: null,
+          acts: ["walk:obstacle", "think", "item_appear", "villain_shrink", "cheer"],
+          outcome: "The camera studies the new pictures. Its guess for the pumpkin drops to 'fox, 9% sure'. Captain Copycat's paintbrush droops, and Pip finds a magnifier in the pile of paint pots.",
+          reveals: "After seeing new labelled examples, the camera was less fooled by lookalikes. Giving it more examples helps it learn.",
+          bridge: "Because of that, the camera was less sure about pumpkins, so Captain Copycat grumbled off into the Whispering Wood after dark, with a new trick up his sleeve.",
+          effects: { villain: -1, hearts: 0, gain: "magnifier", lose: null } },
+        { text: "Paint the pumpkin blue", quality: "risky", needs: null,
+          acts: ["walk:villain", "splash", "villain_laugh", "dizzy"],
+          outcome: "Splash! Blue paint goes everywhere, mostly on Pip. Captain Copycat paints the pumpkin orange again, even faster.",
+          reveals: "Changing one pumpkin did not help. The camera still only knows orange foxes, so it needs new examples to learn the difference.",
+          bridge: "Because of that, a rather blue Pip followed Captain Copycat into the Whispering Wood after dark, still wondering how to help the camera learn.",
+          effects: { villain: 0, hearts: -1, gain: null, lose: null } },
+        { text: "Put the backpack down and help Captain Copycat paint stripes", quality: "silly", needs: null,
+          acts: ["walk:villain", "villain_steal", "villain_laugh", "villain_grow"],
+          outcome: "While Pip paints a stripe, Captain Copycat tiptoes up and grabs at the backpack, giggling. If anything useful is inside, it is gone, and Pip will have to manage without it.",
+          reveals: "Painting stripes taught the camera nothing. It only learns from the examples it is shown, so Pip must show it better ones.",
+          bridge: "Because of that, Pip hurried after Captain Copycat into the Whispering Wood after dark, holding on tight to the backpack.",
+          effects: { villain: 1, hearts: -1, gain: null, lose: "photo" } }
       ] },
-    { setting: "forest", time: "night",
-      narration: "Night falls on the Whispering Wood. Everything looks grey and silvery now, even Pip's bright coat. Captain Copycat hides a hot-water bottle in a furry orange hat and pushes it across the path on a skateboard.",
-      obstacle: "The camera only clicks on when something moves past, and it's too dark to see colours.",
-      clue: "Pip touches the camera's little round window. It's a sensor that feels warmth, and it wakes the camera when something warm moves.",
+    { beat: "ten", setting: "forest", time: "night",
+      narration: "Night falls on the Whispering Wood. Everything looks grey and silver, even Pip's bright coat. Then Captain Copycat zooms past on a skateboard, hiding a hot-water bottle in a furry orange hat. The camera beeps, but orange can't be what it sees now! What is waking it up?",
+      clues: [
+        { kind: "listen", sound: "click... whirr", text: "The camera clicks and whirrs only when something warm moves past its small round window. That window is a sensor that feels moving warmth." },
+        { kind: "test", thing: "the camera's round window", settings: [
+          { label: "A cold wet stone rolls past", result: "Nothing happens. The camera stays asleep." },
+          { label: "A warm hot-water bottle rolls past", result: "Click, whirr! The camera wakes up." },
+          { label: "A warm bottle sits perfectly still", result: "Nothing happens. The camera waits for something to move." }],
+          text: "The camera woke for something warm that moves. Cold things and still things did not wake it." }
+      ],
       choices: [
-        { text: "Check whether the furry hat is warm, and why", good: true, result: "Toasty! Copycat's trick fooled the warmth sensor. Pip writes: the camera feels warm movement first, then looks." },
-        { text: "Turn the lantern up as bright as possible", good: false, result: "Every moth in the wood arrives. The camera still can't tell a hat from a fox. What woke the camera up in the first place?" },
-        { text: "Go to bed and check in the morning", good: false, result: "Copycat skateboards past twelve more times. Pip needs to work out what the camera notices in the dark." }
+        { text: "Use the magnifier to look at the camera's grey picture and the warm hat", quality: "wise", needs: "magnifier",
+          acts: ["walk:villain", "shine", "think", "villain_trip", "cheer"],
+          outcome: "Through the magnifier, Pip sees the camera's picture is all grey, with no orange anywhere. The hat only shows up because it is warm. Captain Copycat trips over his own skateboard.",
+          reveals: "At night many cameras switch to infrared and record black-and-white pictures, so colour is not what they see in the dark. Warmth and movement are what wake them.",
+          bridge: "Because of that, Pip knew the camera used warmth, movement and shape, not just colour. Pip chased the clattering skateboard up Tumble Mountain.",
+          effects: { villain: -1, hearts: 0, gain: null, lose: null } },
+        { text: "Turn the lantern up as bright as it will go", quality: "risky", needs: null,
+          acts: ["shine", "wind", "dizzy", "villain_laugh"],
+          outcome: "Whoosh! Every moth in the wood zooms to the lantern and flaps Pip about. The camera still beeps at the hat.",
+          reveals: "A bright light did not wake the camera. It woke when something warm moved past, so light is not the trigger.",
+          bridge: "Because of that, Pip stopped waving the lantern about and chased the clattering skateboard up Tumble Mountain.",
+          effects: { villain: 0, hearts: -1, gain: null, lose: null } },
+        { text: "Curl up and check again in the morning", quality: "silly", needs: null,
+          acts: ["sleep", "villain_sneak", "villain_laugh", "villain_grow"],
+          outcome: "Pip snores under a leaf. Captain Copycat skateboards past twelve more times, and the camera beeps every single time.",
+          reveals: "The camera kept waking up each time the warm hat rolled by, even in the dark. Something warm and moving must be the trigger.",
+          bridge: "Because of that, a sleepy Pip woke up and chased the clattering skateboard up Tumble Mountain.",
+          effects: { villain: 1, hearts: -1, gain: null, lose: null } }
       ] },
-    { setting: "mountain", time: "day",
-      narration: "At the top of Tumble Mountain, Captain Copycat unveils his greatest trick: a robot fox made of orange cushions, with a heater inside! It moves. It's warm. It's orange. The camera beeps wildly.",
-      obstacle: "The cushion fox fools colour, shape AND warmth all at once.",
-      clue: "Real foxes leave narrow paw-prints in a straight line and trot in a special way. The cushion fox rolls on wheels.",
+    { beat: "ketsu", setting: "mountain", time: "day",
+      narration: "At the top of Tumble Mountain, Captain Copycat unveils his greatest trick: a fox made of orange cushions, with a heater inside! It is orange. It is warm. It moves. The camera beeps wildly. Time for Pip to use everything found so far.",
+      clues: [
+        { kind: "spot", label: "tracks in the snow", text: "A real fox leaves small paw-prints in a neat line. The cushion fox leaves two long wheel marks." },
+        { kind: "ask", character: "mouse", line: "Squeak! A real fox sniffs, stops and trots. Cushions just roll and roll.", text: "A real fox trots, stops and sniffs. A cushion on wheels only rolls. The more things a camera checks together, the harder it is to fool." }
+      ],
       choices: [
-        { text: "Teach the camera to watch how things move and the tracks they leave", good: true, result: "The camera watches the wheels roll and beeps: 'NOT A FOX.' Captain Copycat gasps so hard his hat falls off." },
-        { text: "Build an even bigger cushion fox", good: false, result: "Now there are two fake foxes and a very confused camera. Look for something a real fox does that cushions can't." },
-        { text: "Ask the cushion fox politely if it's real", good: false, result: "It says nothing. It's a pile of cushions. What could give the trick away?" }
+        { text: "Add cushion photos labelled 'not a fox' to the photo book and show the camera", quality: "wise", needs: "photo",
+          acts: ["walk:villain", "item_appear", "shine", "villain_shrink", "cheer"],
+          outcome: "Pip adds cushion pictures to the photo book, each labelled 'not a fox'. The camera studies them, then beeps: NOT A FOX! Captain Copycat gasps so hard his hat flies off.",
+          reveals: "Labelled 'not a fox' photos taught the camera a new difference. More examples help it learn, and checking warmth, movement and shape together is harder to trick.",
+          bridge: "Because of that, the camera beeped 'not a fox' at the cushions, and the whole mountain went very quiet.",
+          effects: { villain: -1, hearts: 1, gain: null, lose: null } },
+        { text: "Build an even bigger cushion fox", quality: "risky", needs: null,
+          acts: ["walk:obstacle", "build", "obstacle_grow", "villain_laugh"],
+          outcome: "Now there are two fake foxes and one very confused camera. Captain Copycat claps with glee.",
+          reveals: "More lookalikes did not teach the camera anything. Real foxes leave paw-prints and move in a special way, and cushions do not.",
+          bridge: "Because of that, the camera beeped at two cushion foxes, and Pip had to stop and think.",
+          effects: { villain: 0, hearts: 0, gain: null, lose: null } },
+        { text: "Ask the cushion fox politely if it is real", quality: "silly", needs: null,
+          acts: ["walk:villain", "think", "villain_laugh", "villain_grow", "dizzy"],
+          outcome: "The cushion fox says nothing, because it is a pile of cushions. Captain Copycat giggles so much that he puffs up like a balloon.",
+          reveals: "Cushions cannot answer, so Pip has to look for something a cushion cannot fake, like the tracks it leaves and how it moves.",
+          bridge: "Because of that, Pip looked closer at the cushion fox, and the camera kept beeping.",
+          effects: { villain: 1, hearts: -1, gain: null, lose: null } }
       ] }
   ],
-  finale: "Captain Copycat sits down with a huff, then a smile. 'Fine. Your camera checks warmth, then colour and shape, then how things move. That's clever.' He offers Pip his orange scarf as a prize. That night, a real fox trots by, and the camera blinks once, very sure.",
+  endings: {
+    triumph: { title: "Captain Copycat is out of tricks!", narration: "Captain Copycat sits down with a huff, then a smile. \"Fine,\" he says. \"You noticed so much, and your camera checks more than one thing.\" That night a real fox trots by, and the camera blinks once, very sure.", acts: ["villain_shrink", "cheer", "rainbow", "confetti"] },
+    muddle: { title: "A scrape and a laugh", narration: "The camera beeps at the cushion fox once more, then at a real fox, and Pip wins, a bit muddy. Captain Copycat grumbles about which trick to try next. There is still something left to figure out: how does the camera tell them apart?", acts: ["walk:middle", "slip", "villain_laugh", "cheer"] },
+    second_try: { title: "Let's look again tomorrow", narration: "Captain Copycat's tricks fooled the camera today, and Pip's lantern flickers low. Pip isn't cross. \"We know what to try next,\" says Pip. \"Tomorrow we look again: what wakes the camera up, and what does it see?\"", acts: ["think", "dark", "walk:left", "light"] }
+  },
   wonder_prompt: "How do you think the camera decides it has seen a fox? What could still trick it?",
   offscreen_mission: "Walk around the school garden and draw a map of where a fox might walk. Mark where you would put a camera, and what might fool it there."
 };
 
 /* ---------- AI story generation ---------- */
 const FORMS = ["Quest", "Mystery", "Comic caper", "Fable", "Rescue mission", "Race against time", "Detective case", "Tall tale"];
+const KINDS = ["spot", "listen", "compare", "ask", "test", "pattern"];
+const BEATS = ["ki", "sho", "ten", "ketsu"];
+const HELPER_IDS = ["owl", "snail", "mouse", "robot"];
+const QUALITIES = ["wise", "risky", "silly"];
+const DEFAULT_EFFECTS = { wise: { villain: -1, hearts: 0 }, risky: { villain: 0, hearts: 0 }, silly: { villain: 1, hearts: -1 } };
+const DEFAULT_ACTS = { wise: ["walk:obstacle", "think", "cheer"], risky: ["walk:obstacle", "splash", "villain_laugh"], silly: ["walk:obstacle", "slip", "villain_laugh"] };
+const DEFAULT_END = {
+  triumph: { title: "Pip did it!", narration: "The villain is out of tricks, and Pip's lantern glows bright. Pip noticed so many things along the way.", acts: ["cheer", "rainbow", "confetti"] },
+  muddle: { title: "A scrape and a laugh", narration: "Pip gets there in the end, a little muddy and a little puzzled. There is still something left to wonder about.", acts: ["walk:middle", "slip", "cheer"] },
+  second_try: { title: "Let's look again tomorrow", narration: "Today the villain's tricks won, but Pip isn't cross. Pip knows what to try next, and tomorrow Pip will look again.", acts: ["think", "dark", "light"] }
+};
 function buildPrompt(q, age, form) {
   return `You are the story engine for Wonder School's learning companion. A child aged ${age} asked this question:
 """${q}"""
 
-Write an interactive adventure starring Pip, a small, brave, funny explorer with a leaf-sprout head, a saffron raincoat and a lantern. Pip faces a mischievous villain and obstacles. Story form: ${form}.
+Write an interactive adventure starring Pip, a small, brave, funny explorer with a leaf-sprout head, a saffron raincoat and a lantern. Pip faces a mischievous villain and obstacles. Story form: ${form}. The page ACTS OUT every choice as an animation, so each choice needs a list of action steps. Choices change a few tracked numbers (the villain's power, Pip's hearts, the backpack), and every chapter continues to the next whatever the child chose.
 
 RULES
-- NEVER answer the child's question directly anywhere. Instead, each scene hides ONE clue: a true, accurate fact that is one piece of the answer, phrased as something Pip sees, hears or measures. Together the four clues let the child work the answer out.
-- The villain embodies a misconception, a trick or the problem in the question. Silly and cheeky, never frightening, never cruel. No real people, no brands.
-- Reading level for age ${age}: short sentences, concrete words, gentle humour.
-- 4 scenes. Each: narration 2-4 short sentences (max 60 words); obstacle (one sentence); clue (one sentence); exactly 3 choices. Exactly one choice per scene has good=true: it uses the clue to reason or test something. The two others are funny but kind dead-ends, and their result gives a gentle hint back towards the clue without stating the answer.
-- result: 1-2 sentences. Good results show what Pip learned from testing, still not the full answer.
-- finale: 2-4 sentences where Pip overcomes the villain by using the clues together. It may hint how the clues connect but must leave the final explanation for the child to say.
+- NEVER answer the child's question directly anywhere. Each chapter hides true clues, which are accurate facts that are pieces of the answer, phrased as something Pip sees, hears, tests or is told. Together they let the child work out the answer. The villain may lie or mislead, but every clue and every "reveals" line is a true fact.
+- The villain embodies a misconception, a trick or the problem in the question. Silly and cheeky, never frightening or cruel. No real people, no brands.
+- Reading level for age ${age}: short sentences, concrete words, gentle humour. Use repetition and the number three. Praise effort and noticing ("you tested it", "you noticed"), never "clever" or "smart".
+- Exactly 4 chapters with these jobs, each with one small problem and a visible question the child wants answered:
+  1. beat "ki": meet Pip and the question; the villain appears cheeky; the first obstacle.
+  2. beat "sho": Pip travels on; the first choice has an obvious consequence.
+  3. beat "ten": the twist or low point. The villain's trick reframes a clue, or an earlier choice bites back. It must refer back to what the child chose in chapters 1 or 2.
+  4. beat "ketsu": Pip uses what was found. It must refer back to an earlier choice.
+- Each chapter: setting (from: ${SETTING_KEYS.join(", ")}; vary them), time ("day" or "night"), narration of 2-4 short sentences (max 60 words), exactly 2 clues of DIFFERENT kinds, and exactly 3 choices.
+- Clue kinds, with the fields each needs (plus "text": the true fact, one sentence, never the final answer):
+  spot {"kind":"spot","label":"what to look at (max 5 words)","text":""}
+  listen {"kind":"listen","sound":"a sound word, e.g. click... whirr","text":""}
+  compare {"kind":"compare","question":"","a":"","b":"","answer":"a" or "b","text":""}
+  ask {"kind":"ask","character":"owl"|"snail"|"mouse"|"robot","line":"what the helper says, one or two short sentences","text":""}
+  test {"kind":"test","thing":"what Pip tests","settings":[{"label":"","result":""}, 2 or 3 of them],"text":""}
+  pattern {"kind":"pattern","sequence":[3 or 4 short words],"options":[exactly 3 short words],"answer":"one of the options","text":""}
+  Use at least 4 different kinds across the story, and make chapter 3 use a test or pattern clue.
+- The 3 choices in each chapter are plausible, never labelled right or wrong in the text: one "wise", one "risky", one "silly". The wise choice uses the clues to reason or test. Risky is a fair try that half works. Silly is funny but kind. Nobody is shamed or hurt, and there is never a game over.
+- Each choice has: text; quality; needs (an item id or null); acts (2 to 6 action steps that really SHOW what happens, so the animation matches the outcome); outcome (1-2 sentences saying what happened); reveals (one true sentence this consequence teaches; for a setback it teaches what did NOT work, which is still information); bridge (one sentence starting "Because of that," that opens the next chapter and mentions what the child did or what happened; in chapter 4 it leads into the ending); effects {"villain":-1|0|1,"hearts":-1|0|1,"gain":item id or null,"lose":item id or null}.
+- Default effects: wise villain -1, hearts 0; risky villain 0; silly villain +1, hearts -1. Use hearts +1 sometimes for a great choice. A "gain" is something Pip finds or earns; a "lose" is something the villain grabs or Pip drops.
+- Items: 2 or 3 backpack items, each {"id":"short_lowercase","name":"two words max","icon": one of ${ICON_IDS.join(", ")}}. At least one wise choice in chapter 1 or 2 must "gain" an item, and at least one choice in chapter 3 or 4 must have "needs" set to that item (the delayed consequence), so the child without it sees that choice locked. Never make all 3 choices in a chapter need an item. One silly choice may "lose" an item the child could have.
+- Allowed action steps (use only these, as "verb" or "verb:argument"): walk:left, walk:middle, walk:obstacle, walk:villain, walk:right, jump, climb, slip, splash, hide, shine, think, cheer, dizzy, run_away, push, dig, fly, build, sleep, villain_laugh, villain_grow, villain_shrink, villain_steal, villain_trip, villain_flee, villain_sneak, rain, wind, dark, light, obstacle_break, obstacle_grow, item_appear, item_lost, rainbow, confetti. Examples: Pip hides the camera in a bush = ["walk:obstacle","hide","villain_laugh","obstacle_grow"]; a good test = ["walk:obstacle","think","item_appear","cheer"]. A choice that wins should include villain_shrink, villain_trip or cheer; one that backfires should include slip, splash, dizzy or villain_laugh.
+- endings: three warm endings, none says "wrong". Each has title, narration (2-3 sentences) and acts (2 to 6 steps). "triumph" (the villain is outsmarted and joins in), "muddle" (Pip wins with a scrape and a laugh, and still has a question), "second_try" (Pip isn't finished yet but knows what to look at next; ends on "tomorrow we look again"). An ending may hint how the clues connect but must leave the final explanation for the child to say.
 - wonder_prompt: one open question asking the child to explain the answer in their own words.
 - offscreen_mission: one hands-on activity away from the screen, using everyday classroom or outdoor materials.
-- setting for each scene from: ${SETTING_KEYS.join(", ")}. Vary them. time is "day" or "night".
 - villain.type from: fog, gremlin, machine, shadow. villain.color as a #rrggbb hex.
-- facts_to_check: the true facts behind each clue, written plainly for the teacher to verify.
+- facts_to_check: the true facts behind every clue and every "reveals" line, written plainly for the teacher to verify.
 - If the question touches a sensitive subject (death, illness, family trouble, bodies, violence, danger), set needs_teacher true, write teacher_note with why, and keep the story very gentle. Otherwise needs_teacher false and teacher_note "".
 - If the question is vague, silly or not quite a question, interpret it generously and kindly.
 
 Reply with ONLY a JSON object of this shape:
-{"title":"","form":"${form}","villain":{"name":"","type":"","color":"#","motive":""},"learning_aim":"","facts_to_check":[""],"materials":[""],"needs_teacher":false,"teacher_note":"","scenes":[{"setting":"","time":"day","narration":"","obstacle":"","clue":"","choices":[{"text":"","good":true,"result":""}]}],"finale":"","wonder_prompt":"","offscreen_mission":""}`;
-}
-function validStory(s) {
-  if (!s || typeof s !== "object" || !Array.isArray(s.scenes) || s.scenes.length < 2) return null;
-  const str = (v, d = "") => (typeof v === "string" ? v.trim() : d);
-  const v = s.villain || {};
-  const out = {
-    title: str(s.title, "Pip's Adventure"), form: str(s.form, "Quest"),
-    villain: { name: str(v.name, "The Muddle"), type: ["fog", "gremlin", "machine", "shadow"].includes(v.type) ? v.type : "gremlin", color: HEX.test(v.color || "") ? v.color : "#8a5cc2", motive: str(v.motive) },
-    learning_aim: str(s.learning_aim), facts_to_check: (Array.isArray(s.facts_to_check) ? s.facts_to_check : []).map((x) => str(x)).filter(Boolean),
-    materials: (Array.isArray(s.materials) ? s.materials : []).map((x) => str(x)).filter(Boolean),
-    needs_teacher: !!s.needs_teacher, teacher_note: str(s.teacher_note),
-    scenes: s.scenes.slice(0, 5).map((sc) => ({
-      setting: SETTING_KEYS.includes(sc.setting) ? sc.setting : "forest", time: sc.time === "night" ? "night" : "day",
-      narration: str(sc.narration), obstacle: str(sc.obstacle), clue: str(sc.clue),
-      choices: (Array.isArray(sc.choices) ? sc.choices : []).slice(0, 4).map((c) => ({ text: str(c.text), good: !!c.good, result: str(c.result) })).filter((c) => c.text)
-    })).filter((sc) => sc.narration && sc.choices.some((c) => c.good)),
-    finale: str(s.finale), wonder_prompt: str(s.wonder_prompt, "What do you think the answer is now?"), offscreen_mission: str(s.offscreen_mission)
-  };
-  return out.scenes.length >= 2 ? out : null;
+{"title":"","form":"${form}","villain":{"name":"","type":"","color":"#","motive":""},"learning_aim":"","facts_to_check":[""],"materials":[""],"needs_teacher":false,"teacher_note":"",
+"items":[{"id":"","name":"","icon":""}],
+"chapters":[{"beat":"ki","setting":"","time":"day","narration":"","clues":[{"kind":"spot","label":"","text":""},{"kind":"compare","question":"","a":"","b":"","answer":"a","text":""}],
+"choices":[{"text":"","quality":"wise","needs":null,"acts":["walk:obstacle","think","cheer"],"outcome":"","reveals":"","bridge":"Because of that, ","effects":{"villain":-1,"hearts":0,"gain":null,"lose":null}}]}],
+"endings":{"triumph":{"title":"","narration":"","acts":[""]},"muddle":{"title":"","narration":"","acts":[""]},"second_try":{"title":"","narration":"","acts":[""]}},
+"wonder_prompt":"","offscreen_mission":""}`;
 }
 
+const strOf = (v, d = "", max = 600) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : d);
+function cleanActs(a, fallback) {
+  const out = (Array.isArray(a) ? a : []).map((x) => (typeof x === "string" ? x.trim() : "")).filter((x) => {
+    const [v, arg] = x.split(":"); return VERBS.includes(v) && (v !== "walk" || WALKS.includes(arg));
+  }).slice(0, 6);
+  return out.length >= 2 ? out : fallback.slice();
+}
+function cleanClue(c) {
+  if (!c || typeof c !== "object" || !KINDS.includes(c.kind)) return null;
+  const text = strOf(c.text); if (!text) return null;
+  const o = { kind: c.kind, text };
+  switch (c.kind) {
+    case "spot": o.label = strOf(c.label, "something shiny", 40); break;
+    case "listen": o.sound = strOf(c.sound, "", 40); if (!o.sound) return null; break;
+    case "compare":
+      o.question = strOf(c.question, "Which one is it?", 160); o.a = strOf(c.a, "", 120); o.b = strOf(c.b, "", 120);
+      if (!o.a || !o.b || !["a", "b"].includes(c.answer)) return null; o.answer = c.answer; break;
+    case "ask": o.character = HELPER_IDS.includes(c.character) ? c.character : "owl"; o.line = strOf(c.line, "", 240); if (!o.line) return null; break;
+    case "test": {
+      o.thing = strOf(c.thing, "the mystery", 100);
+      o.settings = (Array.isArray(c.settings) ? c.settings : []).slice(0, 3).map((x) => ({ label: strOf(x?.label, "", 80), result: strOf(x?.result, "", 160) })).filter((x) => x.label && x.result);
+      if (o.settings.length < 2) return null; break;
+    }
+    case "pattern": {
+      o.sequence = (Array.isArray(c.sequence) ? c.sequence : []).map((x) => strOf(x, "", 24)).filter(Boolean).slice(0, 4);
+      let opts = (Array.isArray(c.options) ? c.options : []).map((x) => strOf(x, "", 24)).filter(Boolean).slice(0, 3);
+      const ans = strOf(c.answer, "", 24);
+      if (o.sequence.length < 3 || !ans) return null;
+      if (!opts.includes(ans)) opts = [ans, ...opts.slice(0, 2)];
+      o.options = opts; o.answer = ans; if (o.options.length < 2) return null; break;
+    }
+  }
+  return o;
+}
+function validStory(s) {
+  if (!s || typeof s !== "object" || !Array.isArray(s.chapters) || s.chapters.length < 4) return null;
+  const v = s.villain || {}, ids = new Set();
+  const items = (Array.isArray(s.items) ? s.items : []).slice(0, 4).map((it, i) => {
+    let id = strOf(it?.id, "", 24).replace(/[^a-zA-Z0-9_]/g, ""); if (!id || ids.has(id)) id = "item" + i; ids.add(id);
+    return { id, name: strOf(it?.name, "Mystery thing", 28), icon: ICON_IDS.includes(it?.icon) ? it.icon : ICON_IDS[i % ICON_IDS.length] };
+  });
+  const itemId = (x) => { const k = typeof x === "string" ? x.replace(/[^a-zA-Z0-9_]/g, "") : ""; return k && items.some((it) => it.id === k) ? k : null; };
+  const gainable = new Set();
+  const chapters = [];
+  for (let ci = 0; ci < 4; ci++) {
+    const ch = s.chapters[ci] || {};
+    const clues = [];
+    for (const c of Array.isArray(ch.clues) ? ch.clues : []) { const k = cleanClue(c); if (k) clues.push(k); }
+    const picked = [];
+    for (const k of clues) if (picked.length < 2 && !picked.some((p) => p.kind === k.kind)) picked.push(k);
+    for (const k of clues) if (picked.length < 2 && !picked.includes(k)) picked.push(k);
+    /* 2 or 3 usable choices; fall back kindly for missing outcome/reveals/bridge/effects */
+    const raw = (Array.isArray(ch.choices) ? ch.choices : []).filter((c) => strOf(c?.text)).slice(0, 3);
+    const choices = raw.map((c, i) => {
+      const quality = QUALITIES.includes(c.quality) ? c.quality : QUALITIES[i];
+      const e = c.effects || {}, d = DEFAULT_EFFECTS[quality];
+      const num = (x, lo, hi, def) => (Number.isFinite(Number(x)) && x !== null && x !== "" ? clamp(Math.round(Number(x)), lo, hi) : def);
+      const reveals0 = strOf(c.reveals, "", 300), outcome = strOf(c.outcome, "", 400) || reveals0 || "Pip tries it and sees what happens.";
+      return { text: strOf(c.text, "", 200), quality, needs: null, _needs: itemId(c.needs),
+        acts: cleanActs(c.acts, DEFAULT_ACTS[quality]), outcome, reveals: reveals0 || "Trying it showed Pip something new to think about.",
+        bridge: strOf(c.bridge, "", 300),
+        effects: { villain: num(e.villain, -1, 1, d.villain), hearts: num(e.hearts, -1, 1, d.hearts), gain: itemId(e.gain), lose: itemId(e.lose) } };
+    });
+    if (choices.length < 1) return null;
+    /* a lock only counts if a WISE choice in an earlier chapter can hand the child that item; locks are never invented */
+    choices.forEach((c) => { c.needs = c._needs && gainable.has(c._needs) ? c._needs : null; delete c._needs; });
+    if (choices.every((c) => c.needs)) choices[choices.length - 1].needs = null;
+    choices.forEach((c) => { if (c.quality === "wise" && c.effects.gain) gainable.add(c.effects.gain); });
+    choices.forEach((c) => { if (!c.bridge) c.bridge = ci < 3 ? "Because of that, Pip walked on to the next place." : "Because of that, the story came to its end."; });
+    chapters.push({ beat: BEATS[ci], setting: SETTING_KEYS.includes(ch.setting) ? ch.setting : "forest", time: ch.time === "night" ? "night" : "day", narration: strOf(ch.narration, "Pip looks around and wonders what to do next.", 700), clues: picked, choices });
+  }
+  const end = (k) => { const e = s.endings?.[k] || {}, d = DEFAULT_END[k]; return { title: strOf(e.title, d.title, 80), narration: strOf(e.narration, d.narration, 700), acts: cleanActs(e.acts, d.acts) }; };
+  return {
+    title: strOf(s.title, "Pip's Adventure", 100), form: strOf(s.form, "Quest", 40),
+    villain: { name: strOf(v.name, "The Muddle", 40), type: ["fog", "gremlin", "machine", "shadow"].includes(v.type) ? v.type : "gremlin", color: HEX.test(v.color || "") ? v.color : "#8a5cc2", motive: strOf(v.motive, "", 200) },
+    learning_aim: strOf(s.learning_aim, "", 300), facts_to_check: (Array.isArray(s.facts_to_check) ? s.facts_to_check : []).map((x) => strOf(x, "", 300)).filter(Boolean).slice(0, 12),
+    materials: (Array.isArray(s.materials) ? s.materials : []).map((x) => strOf(x, "", 200)).filter(Boolean).slice(0, 8),
+    needs_teacher: !!s.needs_teacher, teacher_note: strOf(s.teacher_note, "", 400),
+    items, chapters, endings: { triumph: end("triumph"), muddle: end("muddle"), second_try: end("second_try") },
+    wonder_prompt: strOf(s.wonder_prompt, "What do you think the answer is now?", 300), offscreen_mission: strOf(s.offscreen_mission, "", 400)
+  };
+}
 /* ---------- app state ---------- */
-const state = { step: "ask", age: "7–9", question: "", story: null, i: 0, power: 1, log: [], tries: 0, reflection: "", interest: "", teacherObs: "", ctl: null };
+const state = { step: "ask", age: "7–9", question: "", story: null, g: null, tries: 0, reflection: "", interest: "", teacherObs: "", ctl: null };
+const newGame = () => ({ ch: 0, power: 3, hearts: 3, items: [], picks: [], found: [], bridge: "", ending: null });
 const panel = $("#panel");
+const setPanel = (...kids) => panel.replaceChildren(...kids.flat().filter((k) => k != null));
 function setStep(s) {
   state.step = s;
+  delete panel.dataset.ending;
   const order = ["ask", "check", "play", "reflect", "note"];
   document.querySelectorAll("#steps li").forEach((li) => {
     const k = order.indexOf(li.dataset.s), cur = order.indexOf(s);
@@ -539,11 +1171,15 @@ function setStep(s) {
     if (k === cur) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
   });
 }
+const KIND_LABEL = { spot: "Look closely", listen: "Listen", compare: "Compare", ask: "Ask a helper", test: "Test it", pattern: "Spot the pattern", consequence: "What happened" };
+const KIND_DID = { spot: "looked closely", listen: "listened", compare: "compared two things", ask: "asked a helper", test: "ran a test", pattern: "spotted a pattern", consequence: "learned from what happened" };
+const HELPER_NAME = { owl: "the owl", snail: "the snail", mouse: "the mouse", robot: "the robot" };
+const joinList = (a) => (a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]);
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
 function renderAsk(prefill) {
-  setStep("ask");
-  paint({ setting: "garden", night: false, pipX: 220, villain: null, obstacle: false, spark: null, friendly: false, petals: false, title: "The Wonder Garden" });
-  setMeter(null);
+  stopPlayer(); setStep("ask"); showHud(false);
+  paint({ setting: "garden", pipX: 220, title: "The Wonder Garden" });
   const ta = el("textarea", { id: "q", rows: "2", placeholder: "I wonder…", "aria-label": "Your question" });
   ta.value = prefill ?? state.question;
   const status = el("p", { class: "status", id: "askStatus" });
@@ -551,7 +1187,7 @@ function renderAsk(prefill) {
   const ageSeg = el("div", { class: "seg", role: "group", "aria-label": "Age" }, ["4–6", "7–9", "10–11"].map((a) =>
     el("button", { type: "button", "aria-pressed": String(state.age === a), text: a, onclick: (e) => { state.age = a; ageSeg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget))); } })));
   const ideas = ["Why do cats purr?", "Where does the wind come from?", "Why is the sea salty?", "How do bees know where flowers are?"];
-  panel.replaceChildren(
+  setPanel(
     el("div", { class: "eyebrow", text: "Wonder time" }),
     el("h1", { text: "What are you wondering about?" }),
     el("p", { class: "lead", text: "Ask Pip anything. Pip won't tell you the answer. You'll go on an adventure and find the clues together." }),
@@ -589,12 +1225,13 @@ async function start(q, status) {
 
 let loadTimer = null;
 function renderLoading() {
-  paint({ setting: SETTING_KEYS[Math.floor(Math.random() * SETTING_KEYS.length)], night: false, pipX: 400, villain: null, title: "Packing the backpack" });
+  stopPlayer(); showHud(false);
+  paint({ setting: SETTING_KEYS[Math.floor(Math.random() * SETTING_KEYS.length)], pipX: 400, title: "Packing the backpack" });
   const lines = ["Pip is packing a backpack", "Polishing the lantern", "Hiding the clues", "Waking up a cheeky villain", "Drawing the map", "Checking the facts twice"];
   const line = el("p", { class: "narration loading-dots", text: lines[0] });
   let k = 0; clearInterval(loadTimer);
   loadTimer = setInterval(() => { k = (k + 1) % lines.length; line.textContent = lines[k]; animate("#pipInner", "hop"); }, 3200);
-  panel.replaceChildren(
+  setPanel(
     el("div", { class: "eyebrow", text: "Writing your adventure" }),
     el("h2", { text: state.question }),
     line,
@@ -604,118 +1241,256 @@ function renderLoading() {
 }
 
 function renderCheck() {
-  setStep("check");
+  stopPlayer(); setStep("check"); showHud(false);
   const s = state.story;
-  paint({ setting: s.scenes[0].setting, night: s.scenes[0].time === "night", pipX: 170, vilX: 640, villain: s.villain, power: 1, obstacle: false, spark: null, friendly: false, petals: false, title: s.title });
-  setMeter(null);
+  paint({ setting: s.chapters[0].setting, night: s.chapters[0].time === "night", pipX: 170, vilX: 640, villain: s.villain, title: s.title });
   const facts = el("ul", {}, s.facts_to_check.map((f, i) => el("li", {}, el("label", {}, el("input", { type: "checkbox", id: "fact" + i }), el("span", { text: f })))));
-  panel.replaceChildren(
+  const clueList = el("ul", { class: "pathlist" }, s.chapters.map((ch, ci) => el("li", {}, el("b", { text: `Chapter ${ci + 1}: ` }),
+    el("ul", { class: "pathlist" }, ch.clues.map((c) => el("li", { text: `${KIND_LABEL[c.kind]}: ${c.text}` }))))));
+  const teaches = el("details", {}, el("summary", { text: "What each choice teaches" }),
+    el("ul", { class: "pathlist" }, s.chapters.flatMap((ch, ci) => ch.choices.map((c) => el("li", { text: `Chapter ${ci + 1}, ${c.quality}: ${c.reveals}` })))));
+  const itemLines = s.items.map((it) => {
+    const gain = [], need = [], lose = [];
+    s.chapters.forEach((ch, ci) => ch.choices.forEach((c) => {
+      if (c.effects.gain === it.id) gain.push(`chapter ${ci + 1}`); if (c.needs === it.id) need.push(`chapter ${ci + 1}`); if (c.effects.lose === it.id) lose.push(`chapter ${ci + 1}`);
+    }));
+    return `${it.name}${gain.length ? ` · gained in ${gain.join(", ")}` : ""}${need.length ? ` · unlocks a choice in ${need.join(", ")}` : ""}${lose.length ? ` · can be lost in ${lose.join(", ")}` : ""}`;
+  });
+  const endLines = [["triumph", "Triumph (villain power 0–1)"], ["muddle", "Muddle-through (power 2–3)"], ["second_try", "Second try (power 4–5)"]].map(([k, label]) => el("li", {}, el("b", { text: `${label}: ` }), el("span", { text: `${s.endings[k].title}. ${s.endings[k].narration}` })));
+  setPanel(
     el("div", { class: "eyebrow", text: "For the teacher" }),
     el("h2", { text: s.title }),
-    el("p", { class: "lead", text: `${s.form} · ${s.scenes.length} chapters · Villain: ${s.villain.name}${s.villain.motive ? ", who " + s.villain.motive : ""}` }),
+    el("p", { class: "lead", text: `${s.form} · ${s.chapters.length} chapters · Villain: ${s.villain.name}${s.villain.motive ? ", who " + s.villain.motive : ""}` }),
     s.needs_teacher ? el("div", { class: "warn" }, el("b", { text: "Talk with the child first. " }), el("span", { text: s.teacher_note || "This question touches a sensitive subject." })) : null,
     el("div", { class: "check-grid" },
       el("div", {}, el("b", { text: "Learning aim" }), el("p", { text: s.learning_aim || "Not given" })),
       el("div", {}, el("b", { text: "Facts behind the clues" }), facts),
+      el("div", { id: "clueList" }, el("b", { text: "Clues in each chapter" }), clueList, teaches),
+      el("div", { id: "itemList" }, el("b", { text: "Backpack items" }), el("ul", { class: "pathlist" }, itemLines.map((t) => el("li", { text: t })))),
+      el("div", { id: "endList" }, el("b", { text: "The three endings" }), el("ul", { class: "pathlist" }, endLines)),
       el("div", {}, el("b", { text: "Materials" }), el("ul", {}, (s.materials.length ? s.materials : ["None needed"]).map((m) => el("li", { text: m }))),
         el("b", { text: "Away-from-screen mission" }), el("p", { text: s.offscreen_mission }))),
     el("div", { class: "row" },
-      el("button", { class: "btn teal", type: "button", text: "Approve and start", onclick: () => { state.i = 0; state.power = 1; state.log = []; state.tries = 0; renderScene(); } }),
+      el("button", { class: "btn teal", type: "button", text: "Approve and start", onclick: () => { state.g = newGame(); state.tries = 0; renderChapter(); } }),
       s === DEMO ? null : el("button", { class: "btn ghost", type: "button", text: "Write a different version", onclick: () => start(state.question, el("p")) }),
       el("button", { class: "link", type: "button", text: "Back to the question", onclick: () => renderAsk() })),
     el("p", { class: "label", text: "In school, a teacher reviews every story before the child begins. In this prototype you can approve it yourself." })
   );
 }
 
-function renderScene() {
-  setStep("play");
-  const s = state.story, sc = s.scenes[state.i], n = s.scenes.length;
-  const startX = 140 + state.i * 30;
-  let found = false, wrongs = 0;
-  const reveal = () => {
-    if (found) return; found = true;
-    animate("#pipInner", "hop");
-    const sp = $("#spark", svg); if (sp) sp.remove();
-    clueSlot.replaceChildren(el("div", { class: "clue" }, el("b", { text: "Clue" }), el("span", { text: sc.clue })));
-    searchBtn.remove();
-    choices.hidden = false;
-    choices.querySelector("button")?.focus();
-  };
-  paint({ setting: sc.setting, night: sc.time === "night", pipX: 60, vilX: 660, villain: s.villain, power: state.power, obstacle: true, spark: [300 + Math.random() * 240, 140 + Math.random() * 120], friendly: false, petals: false, title: s.title, onSpark: reveal });
-  requestAnimationFrame(() => requestAnimationFrame(() => moveTo(startX + 60)));
-  setMeter(s.villain, state.power);
+/* ---------- stage props for clues ---------- */
+const slotBox = (slot) => { let b = $(`#bits .bit.s${slot}`); if (!b) { b = el("div", { class: `bit s${slot}` }); $("#bits").append(b); } return b; };
+function addHotspot(slot, label, onTap) {
+  const g = document.createElementNS(NS, "g");
+  g.setAttribute("transform", `translate(${slot ? 560 : 245} ${slot ? 235 : 250})`);
+  g.setAttribute("role", "button"); g.setAttribute("tabindex", "0"); g.setAttribute("aria-label", "Look closely: " + label); g.setAttribute("data-hotspot", "spot"); g.style.cursor = "pointer";
+  g.innerHTML = `<circle r="36" fill="transparent"/>${SPARK}`;
+  const t = document.createElementNS(NS, "text");
+  for (const [k, v] of Object.entries({ y: 48, "text-anchor": "middle", "font-size": 17, "font-family": "Fredoka, Trebuchet MS, sans-serif", "font-weight": 600, fill: "#26314f", stroke: "#fff", "stroke-width": 4, "paint-order": "stroke" })) t.setAttribute(k, v);
+  t.textContent = label; g.append(t);
+  g.addEventListener("click", onTap);
+  g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onTap(); } });
+  $("#hot", svg)?.append(g);
+  return g;
+}
+function addHelper(slot, who) {
+  const g = fxAt(slot ? 545 : 235, 402, `<ellipse cy="2" rx="34" ry="6" fill="#1b2340" opacity=".18"/><g class="bob" filter="url(#wcs)">${HELPERS[who] || HELPERS.owl}</g>`);
+  g.parentNode.setAttribute("data-helper", who);
+}
+const clearProps = () => { $("#fx", svg)?.querySelectorAll("[data-helper]").forEach((n) => n.remove()); $("#hot", svg)?.replaceChildren(); clearBits(); };
 
-  const clueSlot = el("div");
-  const searchBtn = el("button", { class: "btn", type: "button", text: "Search for the clue", onclick: reveal });
-  const result = el("div");
-  const choices = el("div", { class: "choices", hidden: true });
-  shuffle(sc.choices).forEach((c, idx) => {
-    const b = el("button", { class: "choice", type: "button" }, el("span", { class: "k", text: "ABC"[idx] || "D" }), el("span", { text: c.text }));
-    b.addEventListener("click", () => {
-      state.log.push({ chapter: state.i + 1, choice: c.text, good: c.good });
-      if (c.good) {
-        choices.querySelectorAll("button").forEach((x) => (x.disabled = x !== b));
-        b.style.textDecoration = "none"; b.style.opacity = 1;
-        state.power = Math.max(0, state.power - 1 / n);
-        setMeter(s.villain, state.power);
-        const o = $("#obst", svg); if (o) o.classList.add("fade-out");
-        animate("#pipInner", "cheer"); moveTo(startX + 200, 660 + 20);
-        const last = state.i === n - 1;
-        result.replaceChildren(el("div", { class: "result good" }, el("p", { text: c.result }),
-          el("button", { class: "btn teal", type: "button", text: last ? "Face the villain" : "Next chapter", onclick: () => { if (last) renderFinale(); else { state.i++; renderScene(); } } })));
-        result.querySelector("button").focus();
-      } else {
-        wrongs++; state.tries++;
+/* ---------- one clue = one interaction ---------- */
+function buildClue(clue, slot, onFound) {
+  const card = el("div", { class: "cluecard", "data-kind": clue.kind, "data-state": "open" });
+  const body = el("div", { class: "cardbody" });
+  const fact = el("div", { class: "cardfact", hidden: true }, el("b", { text: "Clue" }), el("span", { text: clue.text }));
+  card.append(el("div", { class: "cardhead" }, el("span", { class: "kindtag", text: KIND_LABEL[clue.kind] })), body, fact);
+  let hot = null;
+  const reveal = () => {
+    if (card.dataset.state === "found") return;
+    card.dataset.state = "found"; fact.hidden = false; hot?.remove(); animate("#pipInner", "hop");
+    onFound(clue);
+  };
+  const live = (b) => { b.dataset.kind = clue.kind; return b; };
+  const stage = () => slotBox(slot);
+  switch (clue.kind) {
+    case "spot": {
+      hot = addHotspot(slot, clue.label, reveal);
+      body.append(el("p", { class: "label", text: `Something to see: ${clue.label}.` }), live(el("button", { class: "btn small", type: "button", text: "Look closely", onclick: reveal })));
+      break;
+    }
+    case "listen": {
+      const b = live(el("button", { class: "btn small", type: "button", text: "Listen", onclick: async () => {
         b.disabled = true;
-        animate("#vilInner", "shake");
-        result.replaceChildren(el("div", { class: "result oops" }, el("p", { text: c.result }), el("p", { class: "label", text: `${s.villain.name} laughs. Try another way.` })));
-      }
-    });
-    choices.append(b);
+        const bub = el("div", { class: "bubble sound", "aria-hidden": "true" }, [...clue.sound].map((ch, i) => { const sp = el("span", { text: ch === " " ? " " : ch }); sp.style.animationDelay = `${i * 60}ms`; return sp; }));
+        stage().append(bub);
+        tts?.speak(clue.sound.replace(/\.\.\./g, ", "), { voice: "airy", rate: .8 }).catch(() => {});
+        await (HASHFAST() ? sleep(30) : sleep(1700));
+        reveal(); setTimeout(() => bub.remove(), 900);
+      } }));
+      body.append(el("p", { class: "label", text: "Press the button and listen to what Pip hears." }), b);
+      break;
+    }
+    case "compare": {
+      const tags = { a: el("div", { class: "tag" }, el("small", { text: "A" }), el("span", { text: clue.a })), b: el("div", { class: "tag" }, el("small", { text: "B" }), el("span", { text: clue.b })) };
+      stage().append(tags.a, tags.b);
+      const fb = el("p", { class: "said", role: "status" });
+      const opts = el("div", { class: "opts" }, ["a", "b"].map((k) => live(el("button", { class: "opt", type: "button", "data-opt": k, onclick: (e) => {
+        opts.querySelectorAll("button").forEach((x) => (x.disabled = true)); e.currentTarget.classList.add("picked");
+        tags[clue.answer].classList.add("right");
+        fb.textContent = k === clue.answer ? "You noticed it!" : `Good try. Look again at both: it was ${clue.answer.toUpperCase()}.`;
+        reveal();
+      } }, el("b", { text: k.toUpperCase() + ": " }), el("span", { text: clue[k] })))));
+      body.append(el("p", { text: clue.question }), opts, fb);
+      break;
+    }
+    case "ask": {
+      addHelper(slot, clue.character);
+      const bub = el("div", { class: "bubble" }, "…"); stage().append(bub);
+      const b = live(el("button", { class: "btn small", type: "button", text: `Ask ${HELPER_NAME[clue.character]}`, onclick: () => {
+        b.disabled = true; bub.textContent = clue.line; animate("#pipInner", "hop");
+        body.append(el("p", { class: "said", text: `“${clue.line}”` }));
+        tts?.speak(clue.line, { voice: "airy", rate: .92 }).catch(() => {});
+        reveal();
+      } }));
+      body.append(el("p", { class: "label", text: `${HELPER_NAME[clue.character][0].toUpperCase()}${HELPER_NAME[clue.character].slice(1)} is waiting in the picture.` }), b);
+      break;
+    }
+    case "test": {
+      const tag = el("div", { class: "tag" }, el("small", { text: `Test: ${clue.thing}` }), el("span", { text: "Try a setting." })); stage().append(tag);
+      const tried = new Set(), out = el("ul", { class: "pathlist", "aria-live": "polite" });
+      const opts = el("div", { class: "opts" }, clue.settings.map((st, i) => live(el("button", { class: "opt", type: "button", "data-opt": String(i), text: st.label, onclick: (e) => {
+        e.currentTarget.classList.add("picked");
+        if (!tried.has(i)) { tried.add(i); out.append(el("li", { text: `${st.label}: ${st.result}` })); }
+        tag.querySelector("span").textContent = st.result;
+        if (tried.size >= 2) reveal();
+      } }))));
+      body.append(el("p", { text: `Test it: ${clue.thing}. Try at least two settings.` }), opts, out);
+      break;
+    }
+    case "pattern": {
+      const seq = [...clue.sequence.map((w) => el("span", { class: "tag seq", text: w })), el("span", { class: "tag seq", text: "?" })];
+      stage().append(...seq);
+      const fb = el("p", { class: "said", role: "status" });
+      const opts = el("div", { class: "opts" }, clue.options.map((w) => live(el("button", { class: "opt", type: "button", "data-opt": w, onclick: (e) => {
+        opts.querySelectorAll("button").forEach((x) => (x.disabled = true)); e.currentTarget.classList.add("picked");
+        seq[seq.length - 1].textContent = clue.answer; seq[seq.length - 1].classList.add("right");
+        fb.textContent = w === clue.answer ? "You spotted the pattern!" : `Good try. Look again: next comes “${clue.answer}”.`;
+        reveal();
+      } }, el("span", { text: w })))));
+      body.append(el("div", { class: "seqrow", "aria-label": "Pattern" }, [...clue.sequence.map((w) => el("span", { text: w })), el("span", { text: "?" })]), el("p", { text: "What comes next?" }), opts, fb);
+      break;
+    }
+  }
+  return card;
+}
+
+/* ---------- a chapter ---------- */
+function renderChapter() {
+  stopPlayer(); setStep("play");
+  const s = state.story, g = state.g, ch = s.chapters[g.ch], total = s.chapters.length;
+  paint({ setting: ch.setting, night: ch.time === "night", pipX: -80, vilX: 670, villain: s.villain, power: g.power, obstacle: true, title: s.title });
+  showHud(true); drawHud(); setCaption("");
+  P.entrance = glide("pip", 90, 400, 900);
+
+  const found = new Set();
+  const hint = el("p", { class: "label", id: "hint", text: ch.clues.length ? "Find at least one clue to open Pip's choices. Tap a sparkle or a button." : "There are no clues to find here. Choose what Pip does." });
+  const status = el("p", { class: "status", id: "playStatus" });
+  const result = el("div", { id: "result" });
+  const wrap = el("div", { class: "choices-wrap", hidden: ch.clues.length > 0 });
+  const choicesBox = el("div", { class: "choices" });
+  wrap.append(el("h2", { text: "What should Pip do?" }), choicesBox);
+  const onFound = (clue) => {
+    found.add(clue); g.found.push({ chapter: g.ch + 1, kind: clue.kind, text: clue.text });
+    wrap.hidden = false;
+    hint.textContent = found.size >= ch.clues.length ? "You found every clue here. Now choose what Pip does." : "Pip's choices are open. You can still look for the other clue first.";
+  };
+  const clueCards = ch.clues.map((c, i) => buildClue(c, i, onFound));
+
+  shuffle(ch.choices).forEach((c, idx) => {
+    const need = c.needs ? s.items.find((it) => it.id === c.needs) : null, locked = !!need && !g.items.includes(need.id);
+    const b = el("button", { class: "choice", type: "button", "data-quality": c.quality, disabled: locked },
+      el("span", { class: "k", text: "ABC"[idx] }),
+      el("span", { class: "ctext" }, el("span", { text: c.text }),
+        need ? el("span", { class: locked ? "need" : "need ok", text: locked ? `Needs the ${need.name.toLowerCase()}` : `Uses the ${need.name.toLowerCase()}` }) : null));
+    if (locked) b.dataset.locked = "1";
+    b.addEventListener("click", () => choose(c, b));
+    choicesBox.append(b);
   });
 
-  panel.replaceChildren(
-    el("div", { class: "eyebrow", text: `Chapter ${state.i + 1} of ${n} · ${(SETTINGS[sc.setting] || SETTINGS.garden).name}${sc.time === "night" ? " at night" : ""}` }),
-    el("p", { class: "narration", text: sc.narration }),
-    el("div", { class: "row" }, speakBtn(sc.narration + " " + sc.obstacle)),
-    sc.obstacle ? el("div", { class: "obstacle" }, el("b", { text: "Obstacle" }), el("span", { text: sc.obstacle })) : null,
-    clueSlot,
-    el("div", { class: "row" }, searchBtn, el("span", { class: "label", text: "Or tap the sparkle in the picture." })),
-    choices, result
+  async function choose(c, btn) {
+    choicesBox.querySelectorAll("button").forEach((x) => (x.disabled = true));
+    btn.classList.add("chosen");
+    clearProps();
+    status.textContent = "Watch what Pip does…";
+    const owned = (id) => (id && g.items.includes(id) ? id : null);
+    const iconOf = (id) => s.items.find((it) => it.id === id)?.icon || null;
+    const ctx = { villainName: s.villain.name, itemId: iconOf(c.effects.gain || c.needs || owned(c.effects.lose)), stealId: iconOf(owned(c.effects.lose)), packEmpty: !g.items.length };
+    const ok = await play(c.acts, ctx);
+    if (!ok) return;
+    await applyEffects(c.effects);
+    if (state.step !== "play" || state.g !== g || g.ch >= total) return;
+    g.picks.push({ chapter: g.ch + 1, text: c.text, quality: c.quality, outcome: c.outcome });
+    g.found.push({ chapter: g.ch + 1, kind: "consequence", text: c.reveals });
+    g.bridge = c.bridge; status.textContent = "";
+    const last = g.ch === total - 1;
+    const next = el("button", { class: "btn teal", type: "button", text: last ? "See how it ends" : "Next chapter", onclick: () => { if (last) renderEnding(); else { g.ch++; renderChapter(); } } });
+    result.replaceChildren(el("div", { class: "result", "data-quality": c.quality },
+      el("p", { text: c.outcome }),
+      el("div", { class: "clue consequence", "data-kind": "consequence" }, el("b", { text: "You found out" }), el("span", { text: c.reveals })),
+      el("div", { class: "row" }, speakBtn(c.outcome + " " + c.reveals), next)));
+    next.focus();
+  }
+
+  setPanel(
+    el("div", { class: "eyebrow", text: `Chapter ${g.ch + 1} of ${total} · ${(SETTINGS[ch.setting] || SETTINGS.garden).name}${ch.time === "night" ? " at night" : ""}` }),
+    g.bridge ? el("p", { class: "bridge", text: g.bridge }) : null,
+    el("p", { class: "narration", text: ch.narration }),
+    el("div", { class: "row" }, speakBtn(ch.narration)),
+    clueCards.length ? el("div", { class: "cluegrid" }, clueCards) : null,
+    hint, wrap, status, result
   );
 }
 
-function renderFinale() {
-  const s = state.story, last = s.scenes[s.scenes.length - 1];
-  paint({ setting: last.setting, night: false, pipX: 300, vilX: 520, villain: s.villain, power: 0, obstacle: false, spark: null, friendly: true, petals: true, title: s.title });
-  setMeter(s.villain, 0);
-  setTimeout(() => animate("#pipInner", "cheer"), 300);
-  panel.replaceChildren(
+/* ---------- endings ---------- */
+function endingKey(power) { return power <= 1 ? "triumph" : power >= 4 ? "second_try" : "muddle"; }
+function renderEnding() {
+  stopPlayer(); setStep("play");
+  const s = state.story, g = state.g, key = endingKey(g.power), e = s.endings[key];
+  g.ending = key;
+  const last = s.chapters[s.chapters.length - 1];
+  paint({ setting: last.setting, pipX: 250, vilX: 600, villain: s.villain, power: g.power, friendly: key === "triumph", petals: key === "triumph", title: s.title });
+  showHud(true); drawHud();
+  panel.dataset.ending = key;
+  const again = el("button", { class: key === "second_try" ? "btn teal" : "btn ghost", type: "button", text: "Try a different path", onclick: () => { state.tries++; state.g = newGame(); renderChapter(); } });
+  const talk = el("button", { class: key === "second_try" ? "btn ghost" : "btn", type: "button", text: "Tell Pip what you think", onclick: renderReflect });
+  setPanel(
     el("div", { class: "eyebrow", text: "The end of the adventure" }),
-    el("h2", { text: `${s.villain.name} is out of tricks!` }),
-    el("p", { class: "narration", text: s.finale }),
-    el("div", { class: "row" }, speakBtn(s.finale), el("button", { class: "btn", type: "button", text: "Tell Pip what you think", onclick: renderReflect }))
+    el("h2", { text: e.title }),
+    el("p", { class: "narration", text: e.narration }),
+    key === "second_try" ? el("p", { class: "lead", text: "The same story is waiting. A different choice can change what happens, and Pip would love another go." }) : null,
+    el("div", { class: "row" }, speakBtn(e.narration), key === "second_try" ? [again, talk] : [talk, again])
   );
+  play(e.acts, { villainName: s.villain.name, itemId: null, stealId: null });
 }
 
 function renderReflect() {
-  setStep("reflect");
+  stopPlayer(); setStep("reflect"); showHud(false);
   const s = state.story;
-  paint({ setting: "garden", night: false, pipX: 400, villain: null, obstacle: false, spark: null, friendly: false, petals: false, title: "Back at the Wonder Garden" });
-  setMeter(null);
+  paint({ setting: "garden", pipX: 400, title: "Back at the Wonder Garden" });
   const ta = el("textarea", { id: "think", rows: "3", placeholder: "I think…", "aria-label": "What you think now" });
   ta.value = state.reflection;
   const pick = el("div", { class: "chips", role: "group", "aria-label": "Most interesting part" });
-  const options = [...s.scenes.map((sc) => sc.clue), "Something else"];
+  const options = [...new Set(state.g.found.map((f) => f.text)), "Something else"];
   options.forEach((o) => pick.append(el("button", { class: "chip", type: "button", "aria-pressed": String(state.interest === o), text: o, onclick: (e) => {
     state.interest = o; pick.querySelectorAll("button").forEach((b) => { const on = b === e.currentTarget; b.setAttribute("aria-pressed", String(on)); b.style.background = on ? "var(--teal-soft)" : ""; b.style.borderColor = on ? "var(--teal)" : ""; });
   } })));
-  panel.replaceChildren(
+  setPanel(
     el("div", { class: "eyebrow", text: "Your turn" }),
     el("h2", { text: s.wonder_prompt }),
     el("p", { class: "lead", text: `You asked: “${state.question}”` }),
     el("div", { class: "ask-box" }, ta, micBtn(ta)),
-    el("p", { class: "label", text: "Which clue was the most interesting?" }), pick,
+    el("p", { class: "label", text: "You noticed these clues. Which one was the most interesting?" }), pick,
     el("div", { class: "row" },
       el("button", { class: "btn", type: "button", text: "Make the family note", onclick: () => { state.reflection = ta.value.trim(); renderNote(); } }),
       el("button", { class: "btn ghost", type: "button", text: "Actually, that’s not what I was curious about", onclick: () => renderAsk(state.question + " ") }))
@@ -723,29 +1498,37 @@ function renderReflect() {
 }
 
 function renderNote() {
-  setStep("note");
-  const s = state.story;
-  paint({ setting: "garden", night: false, pipX: 400, villain: s.villain, vilX: 560, friendly: true, petals: false, title: "Family note" });
-  const goodCount = state.log.filter((l) => l.good).length;
+  stopPlayer(); setStep("note"); showHud(false);
+  const s = state.story, g = state.g;
+  paint({ setting: "garden", pipX: 400, vilX: 560, villain: s.villain, friendly: true, title: "Family note" });
+  const kinds = [...new Set(g.found.map((f) => f.kind))].sort((a, b) => Object.keys(KIND_DID).indexOf(a) - Object.keys(KIND_DID).indexOf(b));
+  const nClues = g.found.length;
+  const explored = `They found ${plural(nClues, "clue")} by ${joinList(kinds.map((k) => KIND_DID[k]))}.${state.tries ? ` They tried a different path ${plural(state.tries, "time")}.` : ""}`;
+  const pathLines = g.picks.map((p) => `Chapter ${p.chapter}: ${p.text} — ${p.outcome}`);
+  const ending = g.ending ? s.endings[g.ending].title : "(not reached)";
   const obs = el("textarea", { id: "obs", rows: "2", placeholder: "What did you notice? e.g. tested each idea before choosing", "aria-label": "Teacher observation" });
   obs.value = state.teacherObs;
   const noteText = () => [
     `Wonder note`, `Question: ${state.question}`, `Adventure: ${s.title} (${s.form})`,
-    `How they explored: solved ${goodCount} of ${s.scenes.length} chapters, tried ${state.tries} other idea${state.tries === 1 ? "" : "s"} along the way.`,
+    `Path taken:`, ...pathLines.map((l) => "  " + l),
+    `How they explored: ${explored}`,
+    `How it ended: ${ending}`,
     `In their own words: ${state.reflection || "(not recorded)"}`,
     `Most interesting: ${state.interest || "(not chosen)"}`,
     `Teacher noticed: ${obs.value.trim() || "(to add)"}`,
     `Optional next step at home: ${s.offscreen_mission}`
   ].join("\n");
   const copyStatus = el("span", { class: "label" });
-  panel.replaceChildren(
+  setPanel(
     el("div", { class: "eyebrow", text: "Review together before sending" }),
     el("h2", { text: "Note for the family" }),
     el("div", { class: "note-card" },
       el("dl", {},
         el("dt", { text: "Question" }), el("dd", { text: state.question }),
         el("dt", { text: "Adventure" }), el("dd", { text: `${s.title} (${s.form})` }),
-        el("dt", { text: "How they explored" }), el("dd", { text: `Solved ${goodCount} of ${s.scenes.length} chapters and tried ${state.tries} other idea${state.tries === 1 ? "" : "s"} along the way.` }),
+        el("dt", { text: "Path taken" }), el("dd", {}, el("ol", { class: "pathlist", id: "pathList" }, pathLines.map((l) => el("li", { text: l })))),
+        el("dt", { text: "How they explored" }), el("dd", { text: explored }),
+        el("dt", { text: "How it ended" }), el("dd", { id: "endingLine", text: ending }),
         el("dt", { text: "In their own words" }), el("dd", { text: state.reflection || "Not recorded yet" }),
         el("dt", { text: "Most interesting" }), el("dd", { text: state.interest || "Not chosen" }),
         el("dt", { text: "Teacher noticed" }), el("dd", {}, obs),
