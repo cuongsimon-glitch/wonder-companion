@@ -1,0 +1,765 @@
+<title>Wonder Companion</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: a painted story stage on top, a reading panel beneath it, like a picture book page on a tablet. */
+:root {
+  --paper: #f4f6f1;
+  --card: #ffffff;
+  --ink: #26314f;
+  --ink-soft: #5b6585;
+  --line: #dde2d8;
+  --saffron: #f2a93b;
+  --saffron-deep: #b86d0e;
+  --teal: #2f8c88;
+  --teal-soft: #dcefec;
+  --rose: #d9576b;
+  --rose-soft: #fbe3e6;
+  --gold-soft: #fdf1d6;
+  --display: "Fredoka", "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Verdana", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #171c2e; --card: #212842; --ink: #eef0f7; --ink-soft: #a9b0cc; --line: #343c5c;
+    --saffron: #f5b453; --saffron-deep: #f5b453; --teal: #6cc7c0; --teal-soft: #1f3b44;
+    --rose: #f08a99; --rose-soft: #43283a; --gold-soft: #3a3324; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #171c2e; --card: #212842; --ink: #eef0f7; --ink-soft: #a9b0cc; --line: #343c5c;
+  --saffron: #f5b453; --saffron-deep: #f5b453; --teal: #6cc7c0; --teal-soft: #1f3b44;
+  --rose: #f08a99; --rose-soft: #43283a; --gold-soft: #3a3324; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 40px;
+}
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; }
+.brand { font-family: var(--display); font-weight: 700; font-size: 1.35rem; display: flex; align-items: center; gap: 8px; }
+.brand small { font-family: var(--body); font-weight: 400; font-size: .8rem; color: var(--ink-soft); }
+.steps { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
+.steps li { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; padding: 4px 10px; border-radius: 99px; color: var(--ink-soft); border: 1px solid var(--line); }
+.steps li.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.steps li.done { color: var(--teal); border-color: var(--teal); }
+
+.stage { position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 16 / 9; max-width: 100%; background: #e9efe7; box-shadow: 0 1px 0 var(--line), 0 12px 30px -18px rgba(20,30,60,.45); }
+.stage svg { display: block; width: 100%; height: 100%; }
+.stage .title-tag { position: absolute; left: 14px; top: 12px; font-family: var(--display); font-weight: 600; font-size: clamp(.8rem, 2vw, 1rem); background: rgba(255,255,255,.82); color: #26314f; padding: 4px 12px; border-radius: 99px; }
+.meter { position: absolute; right: 14px; top: 12px; background: rgba(255,255,255,.85); color: #26314f; border-radius: 12px; padding: 6px 10px; font-size: .72rem; width: min(220px, 45%); }
+.meter b { display: block; font-family: var(--display); font-weight: 600; font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meter .bar { height: 8px; border-radius: 99px; background: #e4e1ee; margin-top: 4px; overflow: hidden; }
+.meter .bar i { display: block; height: 100%; background: #8a5cc2; border-radius: 99px; transition: width .8s ease; }
+
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: clamp(18px, 3.5vw, 30px); display: flex; flex-direction: column; gap: 16px; }
+h1, h2 { font-family: var(--display); font-weight: 600; margin: 0; line-height: 1.2; text-wrap: balance; }
+h1 { font-size: clamp(1.6rem, 4.2vw, 2.3rem); }
+h2 { font-size: clamp(1.25rem, 3vw, 1.6rem); }
+p { margin: 0; max-width: 65ch; }
+.lead { color: var(--ink-soft); }
+.eyebrow { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--teal); font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ask-box { display: flex; gap: 10px; align-items: stretch; }
+.ask-box textarea, textarea { flex: 1; min-width: 0; font: inherit; font-size: 1.15rem; color: var(--ink); background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 14px 16px; resize: vertical; min-height: 64px; }
+textarea:focus, input:focus { outline: none; border-color: var(--teal); }
+button { font: inherit; cursor: pointer; border: none; }
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.btn { font-family: var(--display); font-weight: 600; font-size: 1.05rem; padding: 12px 22px; border-radius: 99px; background: var(--saffron); color: #2a1d05; box-shadow: 0 3px 0 var(--saffron-deep); transition: transform .1s; }
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--saffron-deep); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--line); }
+.btn.teal { background: var(--teal); color: #fff; box-shadow: 0 3px 0 #1d5e5b; }
+.icon-btn { flex: none; width: 56px; border-radius: 16px; background: var(--teal-soft); color: var(--teal); display: grid; place-items: center; }
+.icon-btn.live { background: var(--rose); color: #fff; animation: pulse 1.2s infinite; }
+.icon-btn svg { width: 24px; height: 24px; }
+.link { background: none; color: var(--teal); text-decoration: underline; text-underline-offset: 3px; padding: 0; font-size: .95rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: var(--paper); border: 1px solid var(--line); color: var(--ink); border-radius: 99px; padding: 7px 14px; font-size: .92rem; }
+.chip.home { background: var(--gold-soft); border-color: transparent; }
+.chip.home::before { content: "From home · "; color: var(--ink-soft); font-size: .8rem; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 99px; padding: 3px; gap: 2px; }
+.seg button { background: none; color: var(--ink-soft); padding: 6px 14px; border-radius: 99px; font-size: .9rem; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.label { font-size: .85rem; color: var(--ink-soft); }
+
+.narration { font-size: clamp(1.1rem, 2.4vw, 1.3rem); line-height: 1.6; }
+.obstacle { display: flex; gap: 10px; align-items: baseline; background: var(--rose-soft); border-radius: 14px; padding: 10px 14px; }
+.obstacle b, .clue b { font-family: var(--display); font-weight: 600; flex: none; }
+.clue { display: flex; gap: 10px; align-items: baseline; background: var(--gold-soft); border-radius: 14px; padding: 12px 14px; animation: rise .5s ease; }
+.choices { display: grid; gap: 10px; }
+.choice { text-align: left; background: var(--paper); color: var(--ink); border: 2px solid var(--line); border-radius: 16px; padding: 14px 16px; font-size: 1.05rem; display: flex; gap: 12px; align-items: center; }
+.choice:hover:not(:disabled) { border-color: var(--teal); }
+.choice:disabled { opacity: .45; cursor: default; text-decoration: line-through; }
+.choice .k { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--teal-soft); color: var(--teal); display: grid; place-items: center; font-family: var(--display); font-weight: 600; }
+.result { border-radius: 16px; padding: 14px 16px; animation: rise .4s ease; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.result.good { background: var(--teal-soft); }
+.result.oops { background: var(--rose-soft); }
+.check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.check-grid > div { min-width: 0; background: var(--paper); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.check-grid ul { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.check-grid label { display: flex; gap: 8px; align-items: flex-start; }
+.check-grid input { margin-top: 5px; accent-color: var(--teal); }
+.warn { background: var(--rose-soft); border-radius: 14px; padding: 12px 14px; }
+.note-card { background: var(--paper); border: 2px dashed var(--line); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.note-card dl { margin: 0; display: grid; grid-template-columns: minmax(110px, 160px) 1fr; gap: 8px 16px; }
+.note-card dt { color: var(--ink-soft); font-size: .88rem; }
+.note-card dd { margin: 0; min-width: 0; }
+@media (max-width: 520px) { .note-card dl { grid-template-columns: 1fr; } .note-card dd { margin-bottom: 6px; } }
+.status { color: var(--ink-soft); font-size: .92rem; min-height: 1.4em; }
+.loading-dots::after { content: ""; animation: dots 1.4s steps(4) infinite; }
+.foot { color: var(--ink-soft); font-size: .82rem; text-align: center; }
+
+/* Stage animation */
+.pip-move, .vil-move { transition: transform 1.3s cubic-bezier(.5,0,.3,1); }
+.bob { animation: bob 2.6s ease-in-out infinite; }
+.blink { animation: blink 4.5s infinite; transform-box: fill-box; transform-origin: center; }
+.glow { animation: glow 2s ease-in-out infinite; }
+.sway { animation: sway 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+.sparkle { animation: sparkle 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; cursor: pointer; }
+.hop { animation: hop .6s ease; }
+.shake { animation: shake .5s ease 2; }
+.cheer { animation: cheer .7s ease 2; }
+.fade-out { transition: opacity 1s ease, transform 1s ease; opacity: 0; transform: translateY(20px); }
+.petal { animation: fall 3.5s linear infinite; }
+@keyframes bob { 50% { transform: translateY(-5px); } }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@keyframes glow { 50% { opacity: .15; } }
+@keyframes sway { 50% { transform: rotate(-3deg) translateY(-4px); } }
+@keyframes sparkle { 50% { transform: scale(1.35) rotate(20deg); } }
+@keyframes hop { 40% { transform: translateY(-26px); } }
+@keyframes shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+@keyframes cheer { 50% { transform: translateY(-18px) rotate(-6deg); } }
+@keyframes fall { from { transform: translateY(-40px); } to { transform: translateY(480px) rotate(200deg); } }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+@keyframes pulse { 50% { opacity: .7; } }
+@keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">Wonder Companion <small>Prototype</small></div>
+    <ol class="steps" id="steps" aria-label="Progress">
+      <li data-s="ask">Ask</li><li data-s="check">Teacher check</li><li data-s="play">Adventure</li><li data-s="reflect">Reflect</li><li data-s="note">Family note</li>
+    </ol>
+  </header>
+
+  <div class="stage" id="stage" aria-hidden="false">
+    <svg id="scene" viewBox="0 0 800 450" role="img" aria-label="Story scene"></svg>
+    <div class="title-tag" id="titleTag">The Wonder Garden</div>
+    <div class="meter" id="meter" hidden><b id="meterName">Mischief</b><div class="bar"><i id="meterBar" style="width:100%"></i></div></div>
+  </div>
+
+  <main class="panel" id="panel" aria-live="polite"></main>
+  <p class="foot">Pip never gives the answer. Each chapter hides a true clue, and the child pieces it together.</p>
+</div>
+
+<script>
+(() => {
+"use strict";
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v;
+    else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (v === true) n.setAttribute(k, "");
+    else if (v !== false && v != null) n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c);
+  return n;
+};
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const rng = (seed) => { let a = 0; for (const ch of String(seed)) a = (a * 31 + ch.charCodeAt(0)) | 0; return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+const shuffle = (arr) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+const SPEAK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-3px;margin-right:6px"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 8a5 5 0 0 1 0 8"/></svg>';
+
+/* ---------- painted world ---------- */
+const SETTINGS = {
+  garden:   { name: "The Garden",       sky: ["#cfe6f3", "#fff3dc"], far: "#a9cf8f", near: "#7db266", ground: "#8fc06c" },
+  forest:   { name: "The Whispering Wood", sky: ["#bfe2d6", "#f4efd3"], far: "#86b99c", near: "#549271", ground: "#6f9b57" },
+  cave:     { name: "The Echo Cave",    sky: ["#4c4473", "#7e6d9d"], far: "#5d5283", near: "#3f3761", ground: "#6c5c7d" },
+  ocean:    { name: "The Salty Shore",  sky: ["#a7d7ef", "#fde6c6"], far: "#70b4d3", near: "#3f8fb8", ground: "#ead19c" },
+  sky:      { name: "Above the Clouds", sky: ["#9cc7f1", "#f8d8e7"], far: "#f6f8ff", near: "#e6edfb", ground: "#f3f6ff" },
+  city:     { name: "Puzzle City",      sky: ["#f5c7a6", "#f8ead0"], far: "#b9a5ca", near: "#8b7ba9", ground: "#aaa39b" },
+  space:    { name: "Out in Space",     sky: ["#1e2452", "#3d306c"], far: "#4a3d7c", near: "#6e5da2", ground: "#8f88ba" },
+  mountain: { name: "Tumble Mountain",  sky: ["#c4dbef", "#eef3f6"], far: "#a0b3cd", near: "#6f86a8", ground: "#9caa84" },
+  workshop: { name: "The Tinker Workshop", sky: ["#ead4b1", "#f6e7cd"], far: "#c99f72", near: "#a6794f", ground: "#8a6646" },
+};
+const SETTING_KEYS = Object.keys(SETTINGS);
+
+function hill(base, amp, seed, color, op = 1) {
+  let d = `M0 450 L0 ${base}`;
+  for (let x = 0; x <= 800; x += 20) d += ` L${x} ${(base + Math.sin(x / 95 + seed) * amp + Math.sin(x / 41 + seed * 2.3) * amp * 0.35).toFixed(1)}`;
+  return `<path d="${d} L800 450 Z" fill="${color}" opacity="${op}"/>`;
+}
+
+function props(key, r) {
+  let s = "";
+  const rr = (a, b) => a + r() * (b - a);
+  switch (key) {
+    case "garden":
+      s += `<circle cx="680" cy="80" r="38" fill="#ffe59a" opacity=".9"/>`;
+      for (let x = 20; x < 800; x += 38) s += `<rect x="${x}" y="300" width="16" height="70" rx="6" fill="#f3e3c7" opacity=".9"/>`;
+      s += `<rect x="0" y="318" width="800" height="9" fill="#e9d6b4"/>`;
+      for (let i = 0; i < 14; i++) { const x = rr(10, 790), y = rr(380, 440), c = ["#f28fa0", "#ffd166", "#b49be8", "#ffffff"][i % 4];
+        s += `<path d="M${x} ${y} q-4 -24 0 -36" stroke="#4f8a46" stroke-width="3" fill="none"/>`;
+        for (let k = 0; k < 5; k++) { const a = k * 72 * Math.PI / 180; s += `<circle cx="${(x + Math.cos(a) * 7).toFixed(1)}" cy="${(y - 38 + Math.sin(a) * 7).toFixed(1)}" r="6" fill="${c}" opacity=".85"/>`; }
+        s += `<circle cx="${x}" cy="${y - 38}" r="4" fill="#f2a93b"/>`; }
+      break;
+    case "forest":
+      for (let i = 0; i < 8; i++) { const x = rr(0, 800), h = rr(150, 230), y = 360;
+        s += `<rect x="${x - 9}" y="${y - h}" width="18" height="${h}" rx="6" fill="#7a5a3c"/>`;
+        for (let k = 0; k < 3; k++) s += `<circle cx="${x + rr(-40, 40)}" cy="${y - h + rr(-20, 30)}" r="${rr(40, 62)}" fill="${["#3f7d5c", "#5c9a6a", "#4b8a60"][k]}" opacity=".82"/>`; }
+      for (let i = 0; i < 6; i++) s += `<ellipse cx="${rr(0, 800)}" cy="${rr(395, 440)}" rx="${rr(20, 40)}" ry="12" fill="#4b7f45" opacity=".8"/>`;
+      break;
+    case "cave":
+      for (let x = 0; x < 820; x += rr(40, 70)) s += `<path d="M${x} 0 L${x + 22} ${rr(60, 150)} L${x + 44} 0Z" fill="#2e2850" opacity=".9"/>`;
+      for (let i = 0; i < 7; i++) { const x = rr(20, 780), y = rr(370, 430), h = rr(24, 50), c = ["#7fe0d3", "#c59bf2", "#9fd2ff"][i % 3];
+        s += `<path d="M${x} ${y} l10 -${h} l10 ${h}Z" fill="${c}" opacity=".85"/><circle cx="${x + 10}" cy="${y - h / 2}" r="${h * .7}" fill="${c}" opacity=".12"/>`; }
+      break;
+    case "ocean":
+      s += `<circle cx="160" cy="100" r="46" fill="#ffd27f" opacity=".95"/>`;
+      for (let k = 0; k < 4; k++) { let d = `M0 ${250 + k * 22}`; for (let x = 0; x <= 800; x += 40) d += ` q20 -10 40 0`; s += `<path d="${d}" stroke="#ffffff" stroke-width="4" fill="none" opacity="${.7 - k * .12}"/>`; }
+      for (let i = 0; i < 6; i++) s += `<ellipse cx="${rr(0, 800)}" cy="${rr(400, 440)}" rx="${rr(6, 12)}" ry="5" fill="#f6b9a6" opacity=".9"/>`;
+      break;
+    case "sky":
+      for (let i = 0; i < 6; i++) { const x = rr(0, 800), y = rr(40, 230); for (let k = 0; k < 4; k++) s += `<circle cx="${x + k * 26}" cy="${y + (k % 2) * 8}" r="${rr(20, 32)}" fill="#ffffff" opacity=".85"/>`; }
+      s += `<path d="M600 160 q30 -60 60 0 q-30 34 -60 0Z" fill="#f28fa0"/><path d="M630 178 v40" stroke="#7a5a3c" stroke-width="2"/><rect x="620" y="216" width="20" height="14" rx="3" fill="#c58b55"/>`;
+      break;
+    case "city":
+      for (let i = 0; i < 12; i++) { const x = i * 70 + rr(-10, 10), w = rr(50, 66), h = rr(110, 240), c = ["#8b7ba9", "#9e8eb9", "#b38fa6", "#7f8fb0"][i % 4];
+        s += `<rect x="${x}" y="${380 - h}" width="${w}" height="${h}" rx="6" fill="${c}" opacity=".9"/>`;
+        for (let wy = 380 - h + 16; wy < 360; wy += 28) for (let wx = x + 10; wx < x + w - 14; wx += 18) if (r() > .35) s += `<rect x="${wx}" y="${wy}" width="9" height="12" rx="2" fill="#ffe7a6" opacity=".9"/>`; }
+      break;
+    case "space":
+      for (let i = 0; i < 80; i++) s += `<circle cx="${rr(0, 800)}" cy="${rr(0, 300)}" r="${rr(.6, 2.2)}" fill="#ffffff" opacity="${rr(.4, 1)}"/>`;
+      s += `<circle cx="620" cy="110" r="52" fill="#f28f6b" opacity=".92"/><ellipse cx="620" cy="110" rx="92" ry="18" fill="none" stroke="#ffd27f" stroke-width="6" opacity=".85"/>`;
+      for (let i = 0; i < 6; i++) s += `<ellipse cx="${rr(0, 800)}" cy="${rr(390, 430)}" rx="${rr(18, 40)}" ry="7" fill="#6f6898" opacity=".8"/>`;
+      break;
+    case "mountain":
+      for (let i = 0; i < 5; i++) { const x = i * 190 + rr(-40, 40), h = rr(160, 260), w = rr(130, 180);
+        s += `<path d="M${x - w} 360 L${x} ${360 - h} L${x + w} 360Z" fill="${["#7c91b2", "#8ea0bd", "#6d83a5"][i % 3]}" opacity=".9"/>`;
+        s += `<path d="M${x - w * .28} ${360 - h * .72} L${x} ${360 - h} L${x + w * .28} ${360 - h * .72} l-18 12 l-16 -10 l-14 12Z" fill="#ffffff" opacity=".95"/>`; }
+      break;
+    case "workshop":
+      for (let y = 70; y < 300; y += 80) { s += `<rect x="30" y="${y}" width="250" height="10" rx="3" fill="#7a5638"/>`;
+        for (let k = 0; k < 4; k++) s += `<rect x="${44 + k * 58}" y="${y - rr(26, 44)}" width="${rr(24, 40)}" height="${rr(26, 44)}" rx="5" fill="${["#e07a5f", "#81b29a", "#f2cc8f", "#6d97c9"][k]}" opacity=".9"/>`; }
+      for (let i = 0; i < 3; i++) { const cx = 560 + i * 80, cy = 120 + (i % 2) * 70, rad = 34 - i * 6;
+        s += `<circle cx="${cx}" cy="${cy}" r="${rad}" fill="none" stroke="#c8913f" stroke-width="14" stroke-dasharray="7 6"/><circle cx="${cx}" cy="${cy}" r="${rad - 6}" fill="#e2b56a"/><circle cx="${cx}" cy="${cy}" r="8" fill="#8a6646"/>`; }
+      break;
+  }
+  return s;
+}
+
+function world(key, night) {
+  const S = SETTINGS[key] || SETTINGS.garden, r = rng(key);
+  let s = `<defs><linearGradient id="skyg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${S.sky[0]}"/><stop offset="1" stop-color="${S.sky[1]}"/></linearGradient></defs>`;
+  s += `<rect width="800" height="450" fill="url(#skyg)"/>`;
+  s += `<g filter="url(#wc)">`;
+  s += hill(250, 24, r() * 6, S.far, .9);
+  if (key !== "sky") s += props(key, r);
+  s += hill(330, 18, r() * 6, S.near, .85);
+  s += hill(372, 10, r() * 6, S.ground, 1);
+  if (key === "sky") s += props(key, r);
+  s += `</g>`;
+  if (night) s += `<rect width="800" height="450" fill="#1a2150" opacity=".42"/><circle cx="700" cy="70" r="30" fill="#fff6d6" opacity=".95" filter="url(#wcs)"/>`;
+  return s;
+}
+
+const PIP = `
+<g class="bob">
+  <ellipse cx="0" cy="2" rx="36" ry="7" fill="#1b2340" opacity=".18"/>
+  <rect x="-17" y="-20" width="11" height="20" rx="5" fill="#3b4a6b"/><rect x="6" y="-20" width="11" height="20" rx="5" fill="#3b4a6b"/>
+  <path d="M-24 -96 Q0 -132 24 -96 L26 -78 L-26 -78Z" fill="#d98a20"/>
+  <path d="M-31 -16 Q-30 -66 0 -70 Q30 -66 31 -16 Q0 -8 -31 -16Z" fill="#f2a93b"/>
+  <circle cx="0" cy="-46" r="3.2" fill="#b86d0e"/><circle cx="0" cy="-32" r="3.2" fill="#b86d0e"/>
+  <path d="M-24 -52 Q-38 -44 -36 -30" stroke="#e0912a" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <path d="M24 -52 Q40 -46 44 -34" stroke="#e0912a" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <circle class="glow" cx="50" cy="-22" r="26" fill="#ffe9a0" opacity=".45"/>
+  <path d="M44 -36 v-6 h12 v6" stroke="#5b4630" stroke-width="2.5" fill="none"/>
+  <rect x="41" y="-36" width="18" height="22" rx="5" fill="#fbe39a" stroke="#5b4630" stroke-width="2.5"/>
+  <circle cx="0" cy="-92" r="31" fill="#9fd8c0"/>
+  <path d="M-6 -121 q-16 -22 -2 -30 q10 14 2 30Z" fill="#5daa6b"/><path d="M4 -121 q12 -16 24 -10 q-8 14 -24 10Z" fill="#7cc27e"/>
+  <g class="blink"><ellipse cx="-11" cy="-94" rx="5" ry="7" fill="#24304f"/><ellipse cx="11" cy="-94" rx="5" ry="7" fill="#24304f"/></g>
+  <circle cx="-9" cy="-97" r="1.8" fill="#fff"/><circle cx="13" cy="-97" r="1.8" fill="#fff"/>
+  <circle cx="-20" cy="-82" r="6" fill="#f28fa0" opacity=".55"/><circle cx="20" cy="-82" r="6" fill="#f28fa0" opacity=".55"/>
+  <path d="M-7 -80 Q0 -73 7 -80" stroke="#24304f" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+</g>`;
+
+function villainSVG(type, color) {
+  const c = HEX.test(color || "") ? color : "#8a5cc2";
+  const eyes = (y, sp = 12) => `<g class="blink"><ellipse cx="${-sp}" cy="${y}" rx="6" ry="8" fill="#fff"/><ellipse cx="${sp}" cy="${y}" rx="6" ry="8" fill="#fff"/><circle cx="${-sp + 2}" cy="${y + 1}" r="3.4" fill="#1d2140"/><circle cx="${sp - 2}" cy="${y + 1}" r="3.4" fill="#1d2140"/></g><path d="M${-sp - 8} ${y - 12} l12 5 M${sp + 8} ${y - 12} l-12 5" stroke="#1d2140" stroke-width="3" stroke-linecap="round"/>`;
+  const grin = (y) => `<path d="M-14 ${y} Q0 ${y + 12} 14 ${y}" stroke="#1d2140" stroke-width="3" fill="#fff" stroke-linecap="round"/>`;
+  let body = "";
+  switch (type) {
+    case "fog":
+      body = [[-34, -50, 30], [0, -70, 38], [34, -52, 30], [-14, -30, 30], [20, -28, 28]].map(([x, y, rad]) => `<circle cx="${x}" cy="${y}" r="${rad}" fill="${c}" opacity=".78"/>`).join("") + eyes(-62) + grin(-44);
+      break;
+    case "machine":
+      body = `<rect x="-36" y="-20" width="72" height="14" rx="7" fill="#4a4f66"/><circle cx="-24" cy="-4" r="9" fill="#2c3046"/><circle cx="24" cy="-4" r="9" fill="#2c3046"/>
+        <rect x="-38" y="-78" width="76" height="60" rx="12" fill="${c}"/><rect x="-26" y="-126" width="52" height="44" rx="10" fill="${c}"/>
+        <rect x="-20" y="-118" width="40" height="22" rx="6" fill="#1d2140"/><circle cx="-9" cy="-107" r="4" fill="#7ff0d0"/><circle cx="9" cy="-107" r="4" fill="#7ff0d0"/>
+        <path d="M0 -126 v-16" stroke="#4a4f66" stroke-width="3"/><circle cx="0" cy="-146" r="6" fill="#f28fa0" class="glow"/>
+        <path d="M-38 -60 q-22 6 -24 26 M38 -60 q22 6 24 26" stroke="${c}" stroke-width="10" stroke-linecap="round" fill="none"/>
+        <rect x="-18" y="-62" width="36" height="8" rx="4" fill="#ffffff" opacity=".6"/>`;
+      break;
+    case "shadow":
+      body = `<path d="M-40 0 Q-46 -80 -22 -130 Q0 -160 22 -130 Q46 -80 40 0 Q20 -10 0 0 Q-20 -10 -40 0Z" fill="${c}" opacity=".9"/>
+        <path d="M-24 -118 Q0 -140 24 -118 Q20 -96 0 -94 Q-20 -96 -24 -118Z" fill="#1d2140" opacity=".6"/>
+        <ellipse cx="-9" cy="-112" rx="5" ry="4" fill="#ffe27a"/><ellipse cx="9" cy="-112" rx="5" ry="4" fill="#ffe27a"/>
+        <path d="M-40 -60 q-20 10 -16 30 M40 -60 q20 10 16 30" stroke="${c}" stroke-width="12" stroke-linecap="round" fill="none"/>`;
+      break;
+    default: /* gremlin */
+      body = `<rect x="-20" y="-22" width="12" height="22" rx="5" fill="#3b2f55"/><rect x="8" y="-22" width="12" height="22" rx="5" fill="#3b2f55"/>
+        <path d="M-40 -52 L-64 -96 L-26 -76Z M40 -52 L64 -96 L26 -76Z" fill="${c}"/>
+        <path d="M-38 -16 Q-46 -86 0 -96 Q46 -86 38 -16 Q0 -6 -38 -16Z" fill="${c}"/>
+        <path d="M-30 -84 l6 -16 l8 12 l8 -18 l8 18 l8 -12 l6 16Z" fill="${c}"/>
+        <path d="M-34 -30 Q0 -20 34 -30 L44 -6 Q0 4 -44 -6Z" fill="#f2a93b" opacity=".9"/>` + eyes(-62, 13) + `<path d="M-16 -42 Q0 -30 16 -42" stroke="#1d2140" stroke-width="3" fill="#fff"/><path d="M-8 -40 v5 M0 -38 v5 M8 -40 v5" stroke="#1d2140" stroke-width="2"/>`;
+  }
+  return `<g class="sway">${body}</g>`;
+}
+
+const BOULDERS = `<g filter="url(#wcs)"><ellipse cx="-30" cy="-22" rx="34" ry="24" fill="#8b8f9e"/><ellipse cx="20" cy="-30" rx="40" ry="32" fill="#9fa3b1"/><ellipse cx="0" cy="-64" rx="26" ry="20" fill="#7d8191"/><path d="M-50 -10 q20 -14 40 -4 q20 -16 46 -2" stroke="#5e8a4a" stroke-width="5" fill="none"/></g>`;
+const SPARK = `<g class="sparkle"><circle r="22" fill="#fff6c2" opacity=".5"/><path d="M0 -16 L4 -4 L16 0 L4 4 L0 16 L-4 4 L-16 0 L-4 -4Z" fill="#ffd166" stroke="#d9951a" stroke-width="1.5"/></g>`;
+
+const DEFS = `<defs>
+  <filter id="wc" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed="4" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="12" xChannelSelector="R" yChannelSelector="G" result="d"/>
+    <feGaussianBlur in="d" stdDeviation="0.8" result="b"/>
+    <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="9" result="blot"/>
+    <feColorMatrix in="blot" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.1 1.15" result="blotA"/>
+    <feComposite in="b" in2="blotA" operator="in" result="mottled"/>
+    <feBlend in="mottled" in2="b" mode="multiply"/>
+  </filter>
+  <filter id="wcs" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="2" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="paper"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" seed="7"/><feColorMatrix values="0 0 0 0 0.45  0 0 0 0 0.4  0 0 0 0 0.32  0 0 0 0.5 0"/></filter>
+</defs>`;
+
+const svg = $("#scene");
+let stageState = { setting: "garden", night: false, pipX: 170, vilX: 640, villain: null, power: 1, obstacle: false, spark: null, friendly: false, petals: false };
+
+function paint(patch = {}) {
+  Object.assign(stageState, patch);
+  const st = stageState;
+  let s = DEFS + world(st.setting, st.night);
+  if (st.obstacle) s += `<g id="obst" transform="translate(440 392)">${BOULDERS}</g>`;
+  if (st.villain) {
+    const sc = st.friendly ? .55 : .7 + st.power * .45;
+    const col = st.friendly ? "#b9e4d5" : st.villain.color;
+    s += `<g class="vil-move" id="vil" style="transform: translate(${st.vilX}px, 398px) scale(${sc.toFixed(2)})"><g id="vilInner" filter="url(#wcs)">${villainSVG(st.villain.type, col)}</g></g>`;
+  }
+  s += `<g class="pip-move" id="pip" style="transform: translate(${st.pipX}px, 400px)"><g id="pipInner" filter="url(#wcs)">${PIP}</g></g>`;
+  if (st.spark) s += `<g id="spark" transform="translate(${st.spark[0]} ${st.spark[1]})" role="button" tabindex="0" aria-label="Clue sparkle">${SPARK}</g>`;
+  if (st.petals) { const r = rng("petals"); for (let i = 0; i < 26; i++) s += `<g transform="translate(${(r() * 800).toFixed(0)} 0)"><ellipse class="petal" style="animation-delay:-${(r() * 3.5).toFixed(2)}s" rx="6" ry="3.5" fill="${["#f28fa0", "#ffd166", "#9fd8c0", "#b49be8"][i % 4]}"/></g>`; }
+  s += `<rect width="800" height="450" filter="url(#paper)" opacity=".55" style="mix-blend-mode:multiply" pointer-events="none"/>`;
+  svg.innerHTML = s;
+  const sp = $("#spark", svg);
+  if (sp && st.onSpark) { sp.addEventListener("click", st.onSpark); sp.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); st.onSpark(); } }); }
+  $("#titleTag").textContent = st.title || (SETTINGS[st.setting] || SETTINGS.garden).name;
+}
+function moveTo(pipX, vilX) {
+  const p = $("#pip", svg), v = $("#vil", svg);
+  stageState.pipX = pipX; if (vilX != null) stageState.vilX = vilX;
+  if (p) p.style.transform = `translate(${pipX}px, 400px)`;
+  if (v && vilX != null) v.style.transform = `translate(${vilX}px, 398px) scale(${(.7 + stageState.power * .45).toFixed(2)})`;
+}
+function animate(id, cls) {
+  const n = $(id, svg); if (!n) return;
+  n.classList.remove(cls); void n.getBoundingClientRect(); n.classList.add(cls);
+}
+function setMeter(villain, power) {
+  const m = $("#meter");
+  if (!villain) { m.hidden = true; return; }
+  m.hidden = false;
+  $("#meterName").textContent = `${villain.name}'s mischief`;
+  $("#meterBar").style.width = Math.max(0, power * 100) + "%";
+}
+
+/* ---------- capabilities ---------- */
+let sampleFn = null, tts = null, dict = null;
+(async () => {
+  try { if (!window.claude?.use) return; } catch { return; }
+  const [s, t, d] = await Promise.all(["sample", "tts", "dictation"].map((n) => window.claude.use(n).catch(() => null)));
+  sampleFn = s; tts = t; dict = d;
+  if (state.step === "ask") renderAsk();
+})();
+
+function speakBtn(text) {
+  if (!tts) return null;
+  const b = el("button", { class: "btn ghost", type: "button" });
+  b.innerHTML = SPEAK + "Read to me";
+  b.addEventListener("click", () => tts.speak(text, { voice: "airy", rate: .92 }).catch((e) => { if (e?.code === "not_granted") b.remove(); }));
+  return b;
+}
+function micBtn(target) {
+  if (!dict) return null;
+  const b = el("button", { class: "icon-btn", type: "button", "aria-label": "Say it out loud" });
+  b.innerHTML = MIC;
+  let base = "";
+  dict.onPartial(({ text }) => { if (dict._t === target) target.value = (base + " " + text).trim(); });
+  dict.onFinal(({ text }) => { if (dict._t === target) { base = (base + " " + text).trim(); target.value = base; } });
+  dict.onState(({ state: s }) => { b.classList.toggle("live", dict._t === target && s === "listening"); });
+  b.addEventListener("click", () => {
+    if (dict.active()) { dict.stop().catch(() => {}); return; }
+    dict._t = target; base = target.value.trim();
+    dict.start().catch((e) => { if (e?.code === "not_granted") b.remove(); });
+  });
+  return b;
+}
+
+/* ---------- sample story (works without live AI) ---------- */
+const DEMO = {
+  question: "Could a camera tell when a fox visits?",
+  title: "Pip and the Copycat Camera Caper",
+  form: "Mystery",
+  villain: { name: "Captain Copycat", type: "gremlin", color: "#e0703a", motive: "loves tricking machines with anything orange" },
+  learning_aim: "Notice how a wildlife camera decides what it has seen, and why it can be fooled.",
+  facts_to_check: [
+    "Many wildlife cameras wake up when a motion sensor detects something warm moving.",
+    "Computer vision learns what a fox looks like from lots of labelled example photos.",
+    "A program that has only seen orange foxes may confuse other orange shapes with a fox.",
+    "At night many cameras record in black and white using infrared light."
+  ],
+  materials: ["Paper and crayons for mapping", "Optional: an old wildlife-camera photo set"],
+  needs_teacher: false, teacher_note: "",
+  scenes: [
+    { setting: "garden", time: "day",
+      narration: "BEEP! The garden camera flashes: FOX DETECTED! Pip rushes over with the lantern swinging. But there is no fox. There is only Grandma's orange scarf, flapping on the washing line. From behind the fence comes a giggle.",
+      obstacle: "Captain Copycat has hung orange things all over the garden.",
+      clue: "The camera's screen shows its best guess: 'fox, 61% sure'. It is guessing, not knowing.",
+      choices: [
+        { text: "Look at what the scarf and a fox have in common", good: true, result: "Both are orange and fluffy at the edges. Pip scribbles a note: the camera might be looking at colour and shape." },
+        { text: "Shout 'That's a SCARF!' at the camera", good: false, result: "The camera doesn't answer. It doesn't have ears, only a lens. Maybe look at what it sees instead?" },
+        { text: "Hide the camera in a bush", good: false, result: "Now it can only see leaves. Captain Copycat cheers. Pip needs to understand the camera, not hide it." }
+      ] },
+    { setting: "workshop", time: "day",
+      narration: "Pip follows orange paw-prints into the Tinker Workshop. Inside, Captain Copycat is painting stripes on a pumpkin. 'If it's orange and roundish,' he cackles, 'the camera will think it's a fox!'",
+      obstacle: "A wobbly tower of orange paint pots blocks the way to the camera's computer.",
+      clue: "On the computer is a folder called LEARNED FROM. It holds 500 fox photos, and every single fox is orange, in daylight.",
+      choices: [
+        { text: "Give the camera photos of scarves and pumpkins labelled 'not a fox'", good: true, result: "The camera studies the new pictures. Its guess for the pumpkin drops to 'fox, 9% sure'. Copycat's paintbrush droops." },
+        { text: "Paint the pumpkin blue", good: false, result: "Copycat just paints it orange again, faster. Is there a way to help the camera learn the difference?" },
+        { text: "Unplug the computer to stop the trick", good: false, result: "The screen goes dark. Now the camera can't learn anything at all." }
+      ] },
+    { setting: "forest", time: "night",
+      narration: "Night falls on the Whispering Wood. Everything looks grey and silvery now, even Pip's bright coat. Captain Copycat hides a hot-water bottle in a furry orange hat and pushes it across the path on a skateboard.",
+      obstacle: "The camera only clicks on when something moves past, and it's too dark to see colours.",
+      clue: "Pip touches the camera's little round window. It's a sensor that feels warmth, and it wakes the camera when something warm moves.",
+      choices: [
+        { text: "Check whether the furry hat is warm, and why", good: true, result: "Toasty! Copycat's trick fooled the warmth sensor. Pip writes: the camera feels warm movement first, then looks." },
+        { text: "Turn the lantern up as bright as possible", good: false, result: "Every moth in the wood arrives. The camera still can't tell a hat from a fox. What woke the camera up in the first place?" },
+        { text: "Go to bed and check in the morning", good: false, result: "Copycat skateboards past twelve more times. Pip needs to work out what the camera notices in the dark." }
+      ] },
+    { setting: "mountain", time: "day",
+      narration: "At the top of Tumble Mountain, Captain Copycat unveils his greatest trick: a robot fox made of orange cushions, with a heater inside! It moves. It's warm. It's orange. The camera beeps wildly.",
+      obstacle: "The cushion fox fools colour, shape AND warmth all at once.",
+      clue: "Real foxes leave narrow paw-prints in a straight line and trot in a special way. The cushion fox rolls on wheels.",
+      choices: [
+        { text: "Teach the camera to watch how things move and the tracks they leave", good: true, result: "The camera watches the wheels roll and beeps: 'NOT A FOX.' Captain Copycat gasps so hard his hat falls off." },
+        { text: "Build an even bigger cushion fox", good: false, result: "Now there are two fake foxes and a very confused camera. Look for something a real fox does that cushions can't." },
+        { text: "Ask the cushion fox politely if it's real", good: false, result: "It says nothing. It's a pile of cushions. What could give the trick away?" }
+      ] }
+  ],
+  finale: "Captain Copycat sits down with a huff, then a smile. 'Fine. Your camera checks warmth, then colour and shape, then how things move. That's clever.' He offers Pip his orange scarf as a prize. That night, a real fox trots by, and the camera blinks once, very sure.",
+  wonder_prompt: "How do you think the camera decides it has seen a fox? What could still trick it?",
+  offscreen_mission: "Walk around the school garden and draw a map of where a fox might walk. Mark where you would put a camera, and what might fool it there."
+};
+
+/* ---------- AI story generation ---------- */
+const FORMS = ["Quest", "Mystery", "Comic caper", "Fable", "Rescue mission", "Race against time", "Detective case", "Tall tale"];
+function buildPrompt(q, age, form) {
+  return `You are the story engine for Wonder School's learning companion. A child aged ${age} asked this question:
+"""${q}"""
+
+Write an interactive adventure starring Pip, a small, brave, funny explorer with a leaf-sprout head, a saffron raincoat and a lantern. Pip faces a mischievous villain and obstacles. Story form: ${form}.
+
+RULES
+- NEVER answer the child's question directly anywhere. Instead, each scene hides ONE clue: a true, accurate fact that is one piece of the answer, phrased as something Pip sees, hears or measures. Together the four clues let the child work the answer out.
+- The villain embodies a misconception, a trick or the problem in the question. Silly and cheeky, never frightening, never cruel. No real people, no brands.
+- Reading level for age ${age}: short sentences, concrete words, gentle humour.
+- 4 scenes. Each: narration 2-4 short sentences (max 60 words); obstacle (one sentence); clue (one sentence); exactly 3 choices. Exactly one choice per scene has good=true: it uses the clue to reason or test something. The two others are funny but kind dead-ends, and their result gives a gentle hint back towards the clue without stating the answer.
+- result: 1-2 sentences. Good results show what Pip learned from testing, still not the full answer.
+- finale: 2-4 sentences where Pip overcomes the villain by using the clues together. It may hint how the clues connect but must leave the final explanation for the child to say.
+- wonder_prompt: one open question asking the child to explain the answer in their own words.
+- offscreen_mission: one hands-on activity away from the screen, using everyday classroom or outdoor materials.
+- setting for each scene from: ${SETTING_KEYS.join(", ")}. Vary them. time is "day" or "night".
+- villain.type from: fog, gremlin, machine, shadow. villain.color as a #rrggbb hex.
+- facts_to_check: the true facts behind each clue, written plainly for the teacher to verify.
+- If the question touches a sensitive subject (death, illness, family trouble, bodies, violence, danger), set needs_teacher true, write teacher_note with why, and keep the story very gentle. Otherwise needs_teacher false and teacher_note "".
+- If the question is vague, silly or not quite a question, interpret it generously and kindly.
+
+Reply with ONLY a JSON object of this shape:
+{"title":"","form":"${form}","villain":{"name":"","type":"","color":"#","motive":""},"learning_aim":"","facts_to_check":[""],"materials":[""],"needs_teacher":false,"teacher_note":"","scenes":[{"setting":"","time":"day","narration":"","obstacle":"","clue":"","choices":[{"text":"","good":true,"result":""}]}],"finale":"","wonder_prompt":"","offscreen_mission":""}`;
+}
+function validStory(s) {
+  if (!s || typeof s !== "object" || !Array.isArray(s.scenes) || s.scenes.length < 2) return null;
+  const str = (v, d = "") => (typeof v === "string" ? v.trim() : d);
+  const v = s.villain || {};
+  const out = {
+    title: str(s.title, "Pip's Adventure"), form: str(s.form, "Quest"),
+    villain: { name: str(v.name, "The Muddle"), type: ["fog", "gremlin", "machine", "shadow"].includes(v.type) ? v.type : "gremlin", color: HEX.test(v.color || "") ? v.color : "#8a5cc2", motive: str(v.motive) },
+    learning_aim: str(s.learning_aim), facts_to_check: (Array.isArray(s.facts_to_check) ? s.facts_to_check : []).map((x) => str(x)).filter(Boolean),
+    materials: (Array.isArray(s.materials) ? s.materials : []).map((x) => str(x)).filter(Boolean),
+    needs_teacher: !!s.needs_teacher, teacher_note: str(s.teacher_note),
+    scenes: s.scenes.slice(0, 5).map((sc) => ({
+      setting: SETTING_KEYS.includes(sc.setting) ? sc.setting : "forest", time: sc.time === "night" ? "night" : "day",
+      narration: str(sc.narration), obstacle: str(sc.obstacle), clue: str(sc.clue),
+      choices: (Array.isArray(sc.choices) ? sc.choices : []).slice(0, 4).map((c) => ({ text: str(c.text), good: !!c.good, result: str(c.result) })).filter((c) => c.text)
+    })).filter((sc) => sc.narration && sc.choices.some((c) => c.good)),
+    finale: str(s.finale), wonder_prompt: str(s.wonder_prompt, "What do you think the answer is now?"), offscreen_mission: str(s.offscreen_mission)
+  };
+  return out.scenes.length >= 2 ? out : null;
+}
+
+/* ---------- app state ---------- */
+const state = { step: "ask", age: "7–9", question: "", story: null, i: 0, power: 1, log: [], tries: 0, reflection: "", interest: "", teacherObs: "", ctl: null };
+const panel = $("#panel");
+function setStep(s) {
+  state.step = s;
+  const order = ["ask", "check", "play", "reflect", "note"];
+  document.querySelectorAll("#steps li").forEach((li) => {
+    const k = order.indexOf(li.dataset.s), cur = order.indexOf(s);
+    li.className = k === cur ? "on" : k < cur ? "done" : "";
+    if (k === cur) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
+  });
+}
+
+function renderAsk(prefill) {
+  setStep("ask");
+  paint({ setting: "garden", night: false, pipX: 220, villain: null, obstacle: false, spark: null, friendly: false, petals: false, title: "The Wonder Garden" });
+  setMeter(null);
+  const ta = el("textarea", { id: "q", rows: "2", placeholder: "I wonder…", "aria-label": "Your question" });
+  ta.value = prefill ?? state.question;
+  const status = el("p", { class: "status", id: "askStatus" });
+  const go = el("button", { class: "btn", type: "button", text: "Start my adventure", onclick: () => start(ta.value.trim(), status) });
+  const ageSeg = el("div", { class: "seg", role: "group", "aria-label": "Age" }, ["4–6", "7–9", "10–11"].map((a) =>
+    el("button", { type: "button", "aria-pressed": String(state.age === a), text: a, onclick: (e) => { state.age = a; ageSeg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget))); } })));
+  const ideas = ["Why do cats purr?", "Where does the wind come from?", "Why is the sea salty?", "How do bees know where flowers are?"];
+  panel.replaceChildren(
+    el("div", { class: "eyebrow", text: "Wonder time" }),
+    el("h1", { text: "What are you wondering about?" }),
+    el("p", { class: "lead", text: "Ask Pip anything. Pip won't tell you the answer. You'll go on an adventure and find the clues together." }),
+    el("div", { class: "ask-box" }, ta, micBtn(ta)),
+    el("div", { class: "row" }, el("span", { class: "label", text: "Age" }), ageSeg),
+    el("div", { class: "chips" },
+      el("button", { class: "chip home", type: "button", text: "Why do onions make you cry?", onclick: (e) => { ta.value = e.currentTarget.textContent; ta.focus(); } }),
+      ideas.map((q) => el("button", { class: "chip", type: "button", text: q, onclick: () => { ta.value = q; ta.focus(); } }))),
+    el("div", { class: "row" }, go, el("button", { class: "link", type: "button", text: "Play the sample fox-camera adventure", onclick: () => { state.question = DEMO.question; state.story = DEMO; renderCheck(); } })),
+    status,
+    sampleFn ? null : el("p", { class: "label", text: "Live stories need this page open in Claude. You can still play the sample adventure." })
+  );
+}
+
+async function start(q, status) {
+  if (!q) { status.textContent = "Type or say your question first."; $("#q").focus(); return; }
+  state.question = q;
+  if (!sampleFn) { status.textContent = "Live stories aren't available here. Try the sample adventure below."; return; }
+  renderLoading();
+  const ctl = new AbortController(); state.ctl = ctl;
+  const form = FORMS[Math.floor(Math.random() * FORMS.length)];
+  try {
+    const raw = await sampleFn.json(buildPrompt(q, state.age, form), { signal: ctl.signal, modelTier: "default", cache: false });
+    const story = validStory(raw);
+    if (!story) throw { code: "bad_story" };
+    story.question = q; state.story = story;
+    renderCheck();
+  } catch (e) {
+    if (e?.code === "cancelled") { renderAsk(q); return; }
+    renderAsk(q);
+    const msg = { not_granted: "Pip needs permission to write stories. Allow it when Claude asks, then try again.", rate_limited: "Pip is out of breath. Wait a minute, then try again.", invalid_json: "Pip's story came out jumbled. Press Start to try again.", bad_story: "Pip's story came out jumbled. Press Start to try again." }[e?.code] || "Pip couldn't write the story just now. Press Start to try again.";
+    $("#askStatus").textContent = msg;
+  } finally { clearInterval(loadTimer); }
+}
+
+let loadTimer = null;
+function renderLoading() {
+  paint({ setting: SETTING_KEYS[Math.floor(Math.random() * SETTING_KEYS.length)], night: false, pipX: 400, villain: null, title: "Packing the backpack" });
+  const lines = ["Pip is packing a backpack", "Polishing the lantern", "Hiding the clues", "Waking up a cheeky villain", "Drawing the map", "Checking the facts twice"];
+  const line = el("p", { class: "narration loading-dots", text: lines[0] });
+  let k = 0; clearInterval(loadTimer);
+  loadTimer = setInterval(() => { k = (k + 1) % lines.length; line.textContent = lines[k]; animate("#pipInner", "hop"); }, 3200);
+  panel.replaceChildren(
+    el("div", { class: "eyebrow", text: "Writing your adventure" }),
+    el("h2", { text: state.question }),
+    line,
+    el("p", { class: "label", text: "This can take up to a minute." }),
+    el("div", { class: "row" }, el("button", { class: "btn ghost", type: "button", text: "Cancel", onclick: () => state.ctl?.abort() }))
+  );
+}
+
+function renderCheck() {
+  setStep("check");
+  const s = state.story;
+  paint({ setting: s.scenes[0].setting, night: s.scenes[0].time === "night", pipX: 170, vilX: 640, villain: s.villain, power: 1, obstacle: false, spark: null, friendly: false, petals: false, title: s.title });
+  setMeter(null);
+  const facts = el("ul", {}, s.facts_to_check.map((f, i) => el("li", {}, el("label", {}, el("input", { type: "checkbox", id: "fact" + i }), el("span", { text: f })))));
+  panel.replaceChildren(
+    el("div", { class: "eyebrow", text: "For the teacher" }),
+    el("h2", { text: s.title }),
+    el("p", { class: "lead", text: `${s.form} · ${s.scenes.length} chapters · Villain: ${s.villain.name}${s.villain.motive ? ", who " + s.villain.motive : ""}` }),
+    s.needs_teacher ? el("div", { class: "warn" }, el("b", { text: "Talk with the child first. " }), el("span", { text: s.teacher_note || "This question touches a sensitive subject." })) : null,
+    el("div", { class: "check-grid" },
+      el("div", {}, el("b", { text: "Learning aim" }), el("p", { text: s.learning_aim || "Not given" })),
+      el("div", {}, el("b", { text: "Facts behind the clues" }), facts),
+      el("div", {}, el("b", { text: "Materials" }), el("ul", {}, (s.materials.length ? s.materials : ["None needed"]).map((m) => el("li", { text: m }))),
+        el("b", { text: "Away-from-screen mission" }), el("p", { text: s.offscreen_mission }))),
+    el("div", { class: "row" },
+      el("button", { class: "btn teal", type: "button", text: "Approve and start", onclick: () => { state.i = 0; state.power = 1; state.log = []; state.tries = 0; renderScene(); } }),
+      s === DEMO ? null : el("button", { class: "btn ghost", type: "button", text: "Write a different version", onclick: () => start(state.question, el("p")) }),
+      el("button", { class: "link", type: "button", text: "Back to the question", onclick: () => renderAsk() })),
+    el("p", { class: "label", text: "In school, a teacher reviews every story before the child begins. In this prototype you can approve it yourself." })
+  );
+}
+
+function renderScene() {
+  setStep("play");
+  const s = state.story, sc = s.scenes[state.i], n = s.scenes.length;
+  const startX = 140 + state.i * 30;
+  let found = false, wrongs = 0;
+  const reveal = () => {
+    if (found) return; found = true;
+    animate("#pipInner", "hop");
+    const sp = $("#spark", svg); if (sp) sp.remove();
+    clueSlot.replaceChildren(el("div", { class: "clue" }, el("b", { text: "Clue" }), el("span", { text: sc.clue })));
+    searchBtn.remove();
+    choices.hidden = false;
+    choices.querySelector("button")?.focus();
+  };
+  paint({ setting: sc.setting, night: sc.time === "night", pipX: 60, vilX: 660, villain: s.villain, power: state.power, obstacle: true, spark: [300 + Math.random() * 240, 140 + Math.random() * 120], friendly: false, petals: false, title: s.title, onSpark: reveal });
+  requestAnimationFrame(() => requestAnimationFrame(() => moveTo(startX + 60)));
+  setMeter(s.villain, state.power);
+
+  const clueSlot = el("div");
+  const searchBtn = el("button", { class: "btn", type: "button", text: "Search for the clue", onclick: reveal });
+  const result = el("div");
+  const choices = el("div", { class: "choices", hidden: true });
+  shuffle(sc.choices).forEach((c, idx) => {
+    const b = el("button", { class: "choice", type: "button" }, el("span", { class: "k", text: "ABC"[idx] || "D" }), el("span", { text: c.text }));
+    b.addEventListener("click", () => {
+      state.log.push({ chapter: state.i + 1, choice: c.text, good: c.good });
+      if (c.good) {
+        choices.querySelectorAll("button").forEach((x) => (x.disabled = x !== b));
+        b.style.textDecoration = "none"; b.style.opacity = 1;
+        state.power = Math.max(0, state.power - 1 / n);
+        setMeter(s.villain, state.power);
+        const o = $("#obst", svg); if (o) o.classList.add("fade-out");
+        animate("#pipInner", "cheer"); moveTo(startX + 200, 660 + 20);
+        const last = state.i === n - 1;
+        result.replaceChildren(el("div", { class: "result good" }, el("p", { text: c.result }),
+          el("button", { class: "btn teal", type: "button", text: last ? "Face the villain" : "Next chapter", onclick: () => { if (last) renderFinale(); else { state.i++; renderScene(); } } })));
+        result.querySelector("button").focus();
+      } else {
+        wrongs++; state.tries++;
+        b.disabled = true;
+        animate("#vilInner", "shake");
+        result.replaceChildren(el("div", { class: "result oops" }, el("p", { text: c.result }), el("p", { class: "label", text: `${s.villain.name} laughs. Try another way.` })));
+      }
+    });
+    choices.append(b);
+  });
+
+  panel.replaceChildren(
+    el("div", { class: "eyebrow", text: `Chapter ${state.i + 1} of ${n} · ${(SETTINGS[sc.setting] || SETTINGS.garden).name}${sc.time === "night" ? " at night" : ""}` }),
+    el("p", { class: "narration", text: sc.narration }),
+    el("div", { class: "row" }, speakBtn(sc.narration + " " + sc.obstacle)),
+    sc.obstacle ? el("div", { class: "obstacle" }, el("b", { text: "Obstacle" }), el("span", { text: sc.obstacle })) : null,
+    clueSlot,
+    el("div", { class: "row" }, searchBtn, el("span", { class: "label", text: "Or tap the sparkle in the picture." })),
+    choices, result
+  );
+}
+
+function renderFinale() {
+  const s = state.story, last = s.scenes[s.scenes.length - 1];
+  paint({ setting: last.setting, night: false, pipX: 300, vilX: 520, villain: s.villain, power: 0, obstacle: false, spark: null, friendly: true, petals: true, title: s.title });
+  setMeter(s.villain, 0);
+  setTimeout(() => animate("#pipInner", "cheer"), 300);
+  panel.replaceChildren(
+    el("div", { class: "eyebrow", text: "The end of the adventure" }),
+    el("h2", { text: `${s.villain.name} is out of tricks!` }),
+    el("p", { class: "narration", text: s.finale }),
+    el("div", { class: "row" }, speakBtn(s.finale), el("button", { class: "btn", type: "button", text: "Tell Pip what you think", onclick: renderReflect }))
+  );
+}
+
+function renderReflect() {
+  setStep("reflect");
+  const s = state.story;
+  paint({ setting: "garden", night: false, pipX: 400, villain: null, obstacle: false, spark: null, friendly: false, petals: false, title: "Back at the Wonder Garden" });
+  setMeter(null);
+  const ta = el("textarea", { id: "think", rows: "3", placeholder: "I think…", "aria-label": "What you think now" });
+  ta.value = state.reflection;
+  const pick = el("div", { class: "chips", role: "group", "aria-label": "Most interesting part" });
+  const options = [...s.scenes.map((sc) => sc.clue), "Something else"];
+  options.forEach((o) => pick.append(el("button", { class: "chip", type: "button", "aria-pressed": String(state.interest === o), text: o, onclick: (e) => {
+    state.interest = o; pick.querySelectorAll("button").forEach((b) => { const on = b === e.currentTarget; b.setAttribute("aria-pressed", String(on)); b.style.background = on ? "var(--teal-soft)" : ""; b.style.borderColor = on ? "var(--teal)" : ""; });
+  } })));
+  panel.replaceChildren(
+    el("div", { class: "eyebrow", text: "Your turn" }),
+    el("h2", { text: s.wonder_prompt }),
+    el("p", { class: "lead", text: `You asked: “${state.question}”` }),
+    el("div", { class: "ask-box" }, ta, micBtn(ta)),
+    el("p", { class: "label", text: "Which clue was the most interesting?" }), pick,
+    el("div", { class: "row" },
+      el("button", { class: "btn", type: "button", text: "Make the family note", onclick: () => { state.reflection = ta.value.trim(); renderNote(); } }),
+      el("button", { class: "btn ghost", type: "button", text: "Actually, that’s not what I was curious about", onclick: () => renderAsk(state.question + " ") }))
+  );
+}
+
+function renderNote() {
+  setStep("note");
+  const s = state.story;
+  paint({ setting: "garden", night: false, pipX: 400, villain: s.villain, vilX: 560, friendly: true, petals: false, title: "Family note" });
+  const goodCount = state.log.filter((l) => l.good).length;
+  const obs = el("textarea", { id: "obs", rows: "2", placeholder: "What did you notice? e.g. tested each idea before choosing", "aria-label": "Teacher observation" });
+  obs.value = state.teacherObs;
+  const noteText = () => [
+    `Wonder note`, `Question: ${state.question}`, `Adventure: ${s.title} (${s.form})`,
+    `How they explored: solved ${goodCount} of ${s.scenes.length} chapters, tried ${state.tries} other idea${state.tries === 1 ? "" : "s"} along the way.`,
+    `In their own words: ${state.reflection || "(not recorded)"}`,
+    `Most interesting: ${state.interest || "(not chosen)"}`,
+    `Teacher noticed: ${obs.value.trim() || "(to add)"}`,
+    `Optional next step at home: ${s.offscreen_mission}`
+  ].join("\n");
+  const copyStatus = el("span", { class: "label" });
+  panel.replaceChildren(
+    el("div", { class: "eyebrow", text: "Review together before sending" }),
+    el("h2", { text: "Note for the family" }),
+    el("div", { class: "note-card" },
+      el("dl", {},
+        el("dt", { text: "Question" }), el("dd", { text: state.question }),
+        el("dt", { text: "Adventure" }), el("dd", { text: `${s.title} (${s.form})` }),
+        el("dt", { text: "How they explored" }), el("dd", { text: `Solved ${goodCount} of ${s.scenes.length} chapters and tried ${state.tries} other idea${state.tries === 1 ? "" : "s"} along the way.` }),
+        el("dt", { text: "In their own words" }), el("dd", { text: state.reflection || "Not recorded yet" }),
+        el("dt", { text: "Most interesting" }), el("dd", { text: state.interest || "Not chosen" }),
+        el("dt", { text: "Teacher noticed" }), el("dd", {}, obs),
+        el("dt", { text: "Next step at home" }), el("dd", { text: s.offscreen_mission + " (optional)" }))),
+    el("div", { class: "row" },
+      el("button", { class: "btn teal", type: "button", text: "Copy note", onclick: async () => {
+        state.teacherObs = obs.value;
+        try { await navigator.clipboard.writeText(noteText()); copyStatus.textContent = "Copied."; } catch { copyStatus.textContent = "Copy didn't work here. Select the note text instead."; }
+      } }),
+      el("button", { class: "btn", type: "button", text: "Ask a new question", onclick: () => { state.question = ""; state.reflection = ""; state.interest = ""; state.teacherObs = ""; renderAsk(""); } }),
+      el("button", { class: "link", type: "button", text: "Change my answer", onclick: renderReflect }),
+      copyStatus)
+  );
+}
+
+renderAsk();
+})();
+</script>
