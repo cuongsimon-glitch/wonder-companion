@@ -3,19 +3,21 @@
 A prototype of the AI learning companion for Wonder School, an early-years and primary school
 with a daily Wonder block where children follow their own questions.
 
-A child asks any question. The AI does not answer it. It writes a four-chapter adventure starring
-Pip (a leaf-sprout head, a saffron raincoat and a lantern), who faces a cheeky villain and
-obstacles. Each chapter has clues of different kinds to find (spot, listen, compare, ask, test,
-pattern). The child chooses what Pip does, the animation acts the choice out, and the
-consequences carry forward: the villain's power, Pip's hearts and the backpack change, earlier
-choices unlock or lock later ones, and the state picks one of three endings. The child pieces the
-answer together. A teacher checks the facts first, and the session ends with the child's
-reflection and a note for the family. Scenes are watercolour-style 2D vector art.
+A child asks any question. The AI writes an animated picture book that answers it: a cover and
+12 pages starring Pip (a leaf-sprout head, a saffron raincoat and a lantern), with three lessons,
+a try-fail-try-fail-succeed arc that ends in triumph, a realistic answer page and a recap. Pip
+makes the choices inside the story; the child reads. Every page has a pen-and-wash watercolour
+illustration built from what its text says, with gentle animation. The child reads alone or with
+captions ("I'll read", "Read with me", "Read to me") and can tap a word to hear it. A teacher
+checks the facts first. Books go on a bookshelf the child can come back to, and each reading
+ends with the child's reflection and a note for the family. The design basis is
+`docs/storybook.md`, which builds on `docs/storytelling.md`.
 
 It is one self-contained HTML page published as a claude.ai Artifact
 (https://claude.ai/artifact/TkopEveNKNjwu94PrGGsr8). Live story writing uses the `sample`
-capability, read-aloud uses `tts` and voice input uses `dictation`. These work only when the page
-is opened in Claude. The built-in sample story about the fox camera works anywhere.
+capability, read-aloud uses `tts`, voice input uses `dictation`, and the bookshelf uses `db` and
+`user` (falling back to the tablet's localStorage). These work only when the page is opened in
+Claude. The built-in sample book about the fox camera works anywhere.
 
 ## Folder map
 - `wonder-companion/index.html`: the whole app. It holds the styles, the painted SVG scenes, the
@@ -29,12 +31,15 @@ is opened in Claude. The built-in sample story about the fox camera works anywhe
 - `.claude/skills/reflect/`: the end-of-session review.
 
 ## How to check the app
-Run `node tests/smoke.js` from the repo root. It must print `PASS` and exit 0. It loads the page
-with `#fast` and plays the sample story along a wise, a risky and a silly path to all three
-endings, uses all six clue kinds, checks the HUD state after each chapter, then checks a phone
-width and one run with real animation. Any page error fails it. The expected state values are in
-`EXPECT` in the test, so editing `DEMO` means updating `EXPECT`. Screenshots go to `$SMOKE_OUT`
-or `/tmp/wonder-smoke`; look at them, since PASS doesn't catch overlaps. A "Done when:" check names
+Run `node tests/smoke.js` from the repo root. It must print `PASS` and exit 0 (about 85 s). It
+loads the page with `#fast`, opens the sample from the shelf, approves it, and pages through
+every page by button, keyboard and swipe, checking page kinds, moods, props and labels. It also
+checks read-along captions, resuming a book, counting a full read, the family note, a phone
+width, dark-mode contrast, reduced motion, stand-in `db`/`user`/`tts`/`sample` capabilities
+(including refusals and a late answer), and that no screen shows "null", "undefined" or "NaN".
+Any page error fails it. Screenshots go to `$SMOKE_OUT` or `/tmp/wonder-smoke` (pass a fresh
+folder; old files stay); look at them, since PASS doesn't judge whether a picture matches its
+text. A "Done when:" check names
 this command or the exact clicks and what must appear. Live AI, read-aloud and dictation can't be
 tested outside Claude. Say so rather than claim they work.
 

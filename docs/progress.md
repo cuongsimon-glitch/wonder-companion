@@ -20,6 +20,12 @@
   `validStory`, stricter locks, dark-mode button contrast, empty-backpack theft, animations
   leaking into the next scene, pronouns in captions, reduced-motion pacing. Smoke test passes.
 
+- 2026-11-27: Changed direction to an animated storybook (user request). New research in
+  `docs/storybook.md`. The engineer built it; the reviewer failed the first version with 12
+  findings (saving the place, the Ask screen inside Claude, "Hear it again", full-read counting,
+  shared tablets and more), and I found two more (literal "nullnull" on the shelf, and a villain
+  who looked like a fox). All 14 fixed with a test for each. Published as version 5.
+
 ## Repository
 - GitHub: https://github.com/cuongsimon-glitch/wonder-companion (private), `main` pushed
   2026-11-27. Push new commits with `git push`.
@@ -27,8 +33,9 @@
 ## Next (suggested, not agreed)
 - Save questions so a child can come back to one tomorrow.
 - A teacher dashboard for reviewing a whole class's stories.
-- Make endings depend on clues found as well as choices (research suggests it).
-- Make the stage roomier on phones.
+- "Wonder next": suggest follow-up questions from the book and the child's shelf.
+- Try a live AI book inside Claude and tune `validBook` and the prompt on real output.
+- Decide how children sign in on school tablets.
 
 ## Not yet tested
 - Live story writing, read-aloud and dictation inside Claude.

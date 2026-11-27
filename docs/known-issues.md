@@ -17,6 +17,15 @@
 - Lessons can take 30–90 seconds to write. The loading screen must stay friendly for that long.
 - Live AI stories are only validated against synthetic input. A real model may return JSON that
   `validStory` has to repair or reject; watch the first real runs.
-- Editing `DEMO` means updating `EXPECT` in `tests/smoke.js`.
-- On a phone (390 px) the stage is small and clue tags on it are cramped, though nothing
-  scrolls sideways.
+- Not yet seen: a live AI book, real `tts` word timing (estimated at about 380 ms a word), the
+  account bookshelf inside Claude, and whether Andika loads on the published page.
+- The bookshelf saves to the child's account only if they are signed in and the book is shared
+  with them at Contributor level or above. Viewers save on the tablet only, which is lost if
+  browser data is cleared. Books saved on a tablet stay there, tagged "On this tablet".
+- Saved books live in each child's private `data/users/<id>` space, which even the owner can't
+  read with ArtifactData, so Claude can't inspect saved books.
+- Pages that use the database get no automatic gallery thumbnail; set one from the Share menu.
+- Animals are simplified rather than realistic in detail; "forty photos" and "again and again"
+  are shown as single still moments.
+- Type sizes and words per page by age band are the research worker's judgement, not study
+  results. Test them on a real tablet with children.
