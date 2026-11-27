@@ -27,7 +27,7 @@
   who looked like a fox). All 14 fixed with a test for each. Published as version 5.
 
 ## Repository
-- GitHub: https://github.com/cuongsimon-glitch/wonder-companion (private), `main` pushed
+- GitHub: https://github.com/cuongsimon-glitch/wonder-companion (public since 2026-11-27), `main` pushed
   2026-11-27. Push new commits with `git push`.
 
 ## Next (suggested, not agreed)
