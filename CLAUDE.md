@@ -18,6 +18,7 @@ is opened in Claude. The built-in sample story about the fox camera works anywhe
 - `wonder-companion/index.html`: the whole app. It holds the styles, the painted SVG scenes, the
   story prompt, the flow (Ask → Teacher check → Adventure → Reflect → Family note) and the sample
   story `DEMO`.
+- `tests/smoke.js`: the end-to-end check (see below).
 - `docs/progress.md`: what's done and what's next.
 - `docs/decisions.md`: decisions and the reasons for them.
 - `docs/known-issues.md`: gotchas and open problems.
@@ -25,11 +26,13 @@ is opened in Claude. The built-in sample story about the fox camera works anywhe
 - `.claude/skills/reflect/`: the end-of-session review.
 
 ## How to check the app
-There is no test suite. The default check is a Playwright script that opens
-`wonder-companion/index.html` in the pre-installed Chromium and plays the sample story (Play the
-sample → Approve and start → Search for the clue → a choice). It collects page errors and saves a
-screenshot. A "Done when:" check names the exact clicks and what must appear. Live AI, read-aloud
-and dictation can't be tested outside Claude. Say so rather than claim they work.
+Run `node tests/smoke.js` from the repo root. It must print `PASS` and exit 0. It plays the sample
+story in the pre-installed Chromium from the ask screen to the family note, with one wrong and one
+right choice per chapter, then checks a phone width for sideways scrolling. Any page error fails
+it. Screenshots go to `$SMOKE_OUT` or `/tmp/wonder-smoke`; look at them, since PASS doesn't catch
+overlaps. Pass a page path as the first argument to test another copy. A "Done when:" check names
+this command or the exact clicks and what must appear. Live AI, read-aloud and dictation can't be
+tested outside Claude. Say so rather than claim they work.
 
 ## Rules
 

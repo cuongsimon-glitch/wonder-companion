@@ -33,6 +33,7 @@
   --rose: #f08a99; --rose-soft: #43283a; --gold-soft: #3a3324; color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.55;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -49,7 +50,7 @@ header { display: flex; flex-wrap: wrap; align-items: center; justify-content: s
 
 .stage { position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 16 / 9; max-width: 100%; background: #e9efe7; box-shadow: 0 1px 0 var(--line), 0 12px 30px -18px rgba(20,30,60,.45); }
 .stage svg { display: block; width: 100%; height: 100%; }
-.stage .title-tag { position: absolute; left: 14px; top: 12px; font-family: var(--display); font-weight: 600; font-size: clamp(.8rem, 2vw, 1rem); background: rgba(255,255,255,.82); color: #26314f; padding: 4px 12px; border-radius: 99px; }
+.stage .title-tag { position: absolute; left: 14px; top: 12px; font-family: var(--display); font-weight: 600; font-size: clamp(.8rem, 2vw, 1rem); background: rgba(255,255,255,.82); color: #26314f; padding: 4px 12px; border-radius: 99px; max-width: calc(55% - 40px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meter { position: absolute; right: 14px; top: 12px; background: rgba(255,255,255,.85); color: #26314f; border-radius: 12px; padding: 6px 10px; font-size: .72rem; width: min(220px, 45%); }
 .meter b { display: block; font-family: var(--display); font-weight: 600; font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meter .bar { height: 8px; border-radius: 99px; background: #e4e1ee; margin-top: 4px; overflow: hidden; }

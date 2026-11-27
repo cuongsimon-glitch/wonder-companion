@@ -7,6 +7,14 @@
   step with "Actually, that's not what I was curious about", and a family note to copy. The
   sample fox-camera story works without AI.
 - 2026-11-27: Set up the orchestrator and workers (CLAUDE.md, docs, agents and the reflect skill).
+- 2026-11-27: Added `tests/smoke.js` (written by a Haiku builder). It found that answer buttons
+  showed before the clue in the local file; fixed by adding `[hidden]` to the page's CSS. Also
+  fixed the story title running under the mischief meter on phones. Published as version 3.
+  The test passes.
+
+## Waiting on the user
+- Create an empty GitHub repository so the work can be pushed. Until then it exists only in
+  this container.
 
 ## Next (suggested, not agreed)
 - Save questions so a child can come back to one tomorrow.
