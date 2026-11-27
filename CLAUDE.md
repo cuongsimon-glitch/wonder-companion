@@ -21,8 +21,8 @@ Claude. The built-in sample book about the fox camera works anywhere.
 
 ## Folder map
 - `wonder-companion/index.html`: the whole app. It holds the styles, the painted SVG scenes, the
-  story prompt, the flow (Ask → Teacher check → Adventure → Reflect → Family note) and the sample
-  story `DEMO`.
+  book prompt, the flow (Ask and bookshelf → Teacher check → Read → Reflect → Family note) and
+  the sample book `DEMO`.
 - `tests/smoke.js`: the end-to-end check (see below).
 - `docs/progress.md`: what's done and what's next.
 - `docs/decisions.md`: decisions and the reasons for them.
