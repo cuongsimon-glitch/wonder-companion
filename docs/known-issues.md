@@ -7,7 +7,8 @@
 - Agents in `.claude/agents/` only load when a session starts. In the session that creates or
   edits one, use a general-purpose worker with the same model, effort and instructions.
 - Creating GitHub repositories is blocked in cloud sessions. The user creates the repository,
-  then the session attaches it with push access.
+  then the session attaches it with push access. The project root is `/home/user`, not the
+  `/home/user/wonder-companion` app folder the session suggests as the clone path.
 - `sample`, `tts` and `dictation` resolve to null outside Claude, and the page falls back to the
   sample story. This is expected, not a bug.
 - To keep the same URL, republish with the Artifact tool using the same file path. Leave out

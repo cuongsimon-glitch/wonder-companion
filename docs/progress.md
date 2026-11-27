@@ -20,9 +20,9 @@
   `validStory`, stricter locks, dark-mode button contrast, empty-backpack theft, animations
   leaking into the next scene, pronouns in captions, reduced-motion pacing. Smoke test passes.
 
-## Waiting on the user
-- Create an empty GitHub repository so the work can be pushed. Until then it exists only in
-  this container.
+## Repository
+- GitHub: https://github.com/cuongsimon-glitch/wonder-companion (private), `main` pushed
+  2026-11-27. Push new commits with `git push`.
 
 ## Next (suggested, not agreed)
 - Save questions so a child can come back to one tomorrow.

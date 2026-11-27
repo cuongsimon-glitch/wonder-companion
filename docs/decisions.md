@@ -26,3 +26,19 @@ Each entry gives the date, the decision and the reason.
   research suggested clues should count too. Revisit after real use.
 - 2026-11-27: Delayed consequences: an item gained by a wise choice can unlock a later choice,
   and the villain can steal it. Every ending offers "Try a different path" on the same story.
+- 2026-11-27: **Change of direction: animated storybook, not interactive adventure.** The child
+  reads a 12-page picture book; Pip makes the choices inside the story. Reason: user request.
+  The earlier research is kept and reused (docs/storybook.md section 6).
+- 2026-11-27: **The book now answers the question**, through three lessons and a plain answer
+  page. This supersedes "the AI never states the answer". Reason: user request.
+- 2026-11-27: **One ending, triumph**, after a try-fail-try-fail-succeed arc (page 7 low, page 9
+  triumph). Supersedes the three endings. Reason: user request; docs/storybook.md 7a.
+- 2026-11-27: **No hotspots, games or tapping on pictures**; tapping a word in the text to hear it
+  is the only tap. Reason: Takacs, Swart & Bus 2015 (docs/storybook.md section 2).
+- 2026-11-27: **Real animals and objects are drawn realistically and never talk**; only Pip, the
+  villain and the robot helper are fantastical. Page 11 is a realistic diagram with no Pip.
+  Reason: Ganea et al. 2014 on anthropomorphism and fact learning (docs/storybook.md section 4).
+- 2026-11-27: **Books are saved per child**: to the viewer's private `db` space
+  (`data/users/<id>`) when signed in at Contributor level or above, otherwise to the tablet's
+  localStorage with a visible note. Reason: "the child is free to revisit the book on their own
+  tablet". Open question: how children will sign in on school tablets.
