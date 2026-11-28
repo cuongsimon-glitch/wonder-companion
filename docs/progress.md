@@ -26,6 +26,16 @@
   shared tablets and more), and I found two more (literal "nullnull" on the shelf, and a villain
   who looked like a fox). All 14 fixed with a test for each. Published as version 5.
 
+- 2026-11-28: Child safety released as version 6 (merged from `safety-features`). Personal
+  details are scrubbed; questions are screened by a local word check and an AI check into safe,
+  sensitive and risk; flagged questions go to a teacher inbox (Editors and the owner); teachers
+  approve every AI-written book; questions the AI couldn't check, or whose book failed, arrive as
+  questions to read, so every question a signed-in child asks reaches a teacher. Also: Tell a
+  grown-up on every screen, a families' notice, Remove my books and questions, DSL setup with a
+  test alert, Raise as a safety alert, and a teacher-only Try the safety check panel. Built over
+  six engineer rounds and five review rounds; held-out testing showed the word check alone holds
+  about 60-80% of unseen risk questions, which is why teacher reading is the main protection.
+  Access rules checked on the live page with a probe record (teachers see flags, children don't).
 ## Repository
 - GitHub: https://github.com/cuongsimon-glitch/wonder-companion (public since 2026-11-27), `main` pushed
   2026-11-27. Push new commits with `git push`.
@@ -36,6 +46,8 @@
 - "Wonder next": suggest follow-up questions from the book and the child's shelf.
 - Try a live AI book inside Claude and tune `validBook` and the prompt on real output.
 - Decide how children sign in on school tablets.
+- DSL to test the AI check with real examples using Try the safety check, inside Claude.
+- School to complete a DPIA (privacy-legal plugin can draft one) and confirm retention periods.
 
 ## Not yet tested
 - Live story writing, read-aloud and dictation inside Claude.
