@@ -52,3 +52,10 @@ Each entry gives the date, the decision and the reason.
   (`flags/<uid>`), teachers read and handle all of them.
 - 2026-11-28: **Personal details are scrubbed** from anything a child types or says before it is
   sent to the AI, shown or saved. The child's name is never asked for or stored.
+- 2026-11-28: **A signed-in teacher approves every AI-written book from the teacher inbox**
+  before a child can read it (user decision). Children's new books wait on their shelf as
+  "Waiting for your teacher to check". Reason: on a shared tablet a child could approve their
+  own book and skip the fact check. Safety alerts always sort above books to check.
+- 2026-11-28: **No book unless both safety checks pass**: the local check says safe and the AI
+  classifier returned safe. If the AI check fails, the child is asked to try again (fail
+  closed). A locally flagged question sends its alert straight away, without waiting for the AI.

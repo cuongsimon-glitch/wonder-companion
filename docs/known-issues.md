@@ -29,3 +29,9 @@
   are shown as single still moments.
 - Type sizes and words per page by age band are the research worker's judgement, not study
   results. Test them on a real tablet with children.
+- The local safety check is keyword rules. Each round of held-out testing has found phrasings it
+  misses (latest: 16 of 20 caught before the current fixes). It is a backstop: the AI check must
+  also pass and a teacher approves every book. Retest with new, unseen phrasings after any change.
+- Storage rules can't stop a child's own session editing its own `flags/<uid>` or
+  `reviews/<uid>` items (for example with browser tools). Teacher notes are kept in an
+  admin-only path for this reason.
