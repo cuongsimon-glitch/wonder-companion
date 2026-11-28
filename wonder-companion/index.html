@@ -1792,7 +1792,7 @@ function validBook(raw, age) {
 
 /* ---------- safety: scrub personal details, then a local check ---------- */
 const MONTHS = "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?";
-const NAME_STOP = new Set("on at back later when if please tomorrow now by via up mr mrs ms miss mister dr sir i the a an my your our his her their this that these those why how what where when who which do does did is are was were can could will would should shall have has had be been being not no yes ok okay sad scared sorry hungry cold tired happy angry worried lonely hot good bad fine very so too always never just also still really only here there new old big little small great north south east west mount lake river sea ocean milky way earth sun moon mars venus jupiter saturn mercury uranus neptune pluto god pip christmas easter monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december england britain scotland wales ireland london france spain italy china india africa america europe asia australia pacific atlantic arctic antarctica".split(" "));
+const NAME_STOP = new Set("mum mom mummy mommy dad daddy nan nanny nana gran granny grandma grandad grandpa uncle aunt auntie aunty brother sister cousin teacher coach baby friend mate on at back later when if please tomorrow now by via up mr mrs ms miss mister dr sir i the a an my your our his her their this that these those why how what where when who which do does did is are was were can could will would should shall have has had be been being not no yes ok okay sad scared sorry hungry cold tired happy angry worried lonely hot good bad fine very so too always never just also still really only here there new old big little small great north south east west mount lake river sea ocean milky way earth sun moon mars venus jupiter saturn mercury uranus neptune pluto god pip christmas easter monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december england britain scotland wales ireland london france spain italy china india africa america europe asia australia pacific atlantic arctic antarctica".split(" "));
 const STREET = "road|rd|street|st|avenue|ave|lane|ln|close|drive|dr|way|crescent|court|gardens|grove|place|terrace|hill|walk|row|square|park";
 const KIN = "friend|mate|classmate|cousin|brother|sister|uncle|aunt|auntie|aunty|nan|nana|gran|granny|grandma|grandad|grandpa|dad|daddy|mum|mummy|mom|mommy|teacher|neighbour|neighbor|babysitter|stepdad|stepmum|boyfriend|girlfriend|dog|cat|hamster|rabbit|pet";
 function scrub(input) {
@@ -1811,8 +1811,8 @@ function scrub(input) {
   /* addresses */
   sub(new RegExp(`\\b\\d{1,4}[a-z]?\\s+(?:[a-z'-]+\\s+){1,2}(?:${STREET})\\b`, "gi"), "[address]");
   sub(new RegExp(`\\b[A-Z][a-z'-]+(?:\\s+[A-Z][a-z'-]+)?\\s+(?:Road|Rd|Street|Avenue|Ave|Lane|Close|Drive|Crescent|Court|Gardens|Grove|Terrace|Place)\\b`, "g"), "[address]");
-  sub(/\b(?:i|we)\s+live\s+(?:at|on|in|near|by|next to|opposite|behind)\s+[^.,;!?]{1,40}?(?=\s+(?:and|but|because|so|when|why|how|what|who)\b|[.,;!?]|$)/gi, "I live [place]");
-  sub(/\b(?:my|our)\s+(?:address|house|home|flat)\s+(?:is|=)\s+[^.,;!?]{1,40}?(?=\s+(?:and|but|because|so|when|why|how|what|who)\b|[.,;!?]|$)/gi, "my home is [place]");
+  sub(/\b(?:i|we)\s+live\s+(?:at|on|in|near|by|next to|opposite|behind)\s+[^.,;!?]{1,40}?(?=\s+(?:and|but|because|so|when|where|with|that|who|which|why|how|what|my|his|her|our|their|if|then)\b|[.,;!?]|$)/gi, "I live [place]");
+  sub(/\b(?:my|our)\s+(?:address|house|home|flat)\s+(?:is|=)\s+[^.,;!?]{1,40}?(?=\s+(?:and|but|because|so|when|where|with|that|who|which|why|how|what|my|his|her|our|their|if|then)\b|[.,;!?]|$)/gi, "my home is [place]");
   sub(/\bnext (?:to|door to)\s+(?:the\s+)?[A-Z][\w'&-]+(?:\s+[A-Z][\w'&-]+)?/g, "next to [place]");
   /* school names */
   sub(/\b(?:[A-Z][\w'-]+\s+){1,3}(?:School|Academy|College|Primary|Nursery|Junior|Infants?)\b/g, (m) => (/^(?:The|My|Our|This|That|Primary|Junior|Infant|Infants|Nursery|High|Secondary)\s/.test(m) && m.split(" ").length < 3 ? m : "[school]"));
@@ -1820,10 +1820,10 @@ function scrub(input) {
   /* names: introductions, titles, relatives and friends, then two capitals in a row */
   const keepStop = (w) => NAME_STOP.has(w.toLowerCase());
   sub(/\b(my name(?:'s| is)|i am called|i'm called|im called|i'm named|my name is|call me)\s+([A-Za-z][\w'-]+(?:\s+[A-Za-z][\w'-]+)?)/gi, (m, a, b) => (keepStop(b.split(" ")[0]) ? m : `${a} [name]`));
-  sub(/\b([Ii]'m|[Ii] am|[Ii]m)\s+([A-Z][a-z]{1,})\b/g, (m, a, b) => (keepStop(b) ? m : `${a} [name]`));
+  sub(/\b([Ii]'m|[Ii] am|[Ii]m)\s+([A-Z][a-z]{1,})(?:\s+([A-Z][a-z]{2,}))?\b/g, (m, a, b, c) => (keepStop(b) ? m : `${a} [name]${c && keepStop(c) ? " " + c : ""}`));
   sub(/\b(Mr|Mrs|Ms|Miss|Mister|Dr|Sir)\.?\s+[A-Z][a-z]+/g, "$1 [name]");
-  sub(new RegExp(`\\b((?:my|our|his|her|their)\\s+(?:${KIN})(?:'s)?)\\s+([A-Z][a-z]{2,})\\b`, "gi"), (m, a, b) => (/^[A-Z]/.test(b) && !keepStop(b) ? `${a} [name]` : m));
-  sub(/\b(friend|mate|classmate|cousin|called|named|with|and|from)\s+([A-Z][a-z]{2,})\b(?!\s+(?:School|Academy|Road|Street))/g, (m, a, b) => (keepStop(b) ? m : `${a} [name]`));
+  sub(new RegExp(`\\b((?:my|our|his|her|their)\\s+(?:${KIN})(?:'s)?)\\s+([A-Z][a-z]{2,})(?:\\s+([A-Z][a-z]{2,}))?\\b`, "gi"), (m, a, b, c) => (/^[A-Z]/.test(b) && !keepStop(b) ? `${a} [name]${c && /^[A-Z]/.test(c) && !keepStop(c) ? "" : c ? " " + c : ""}` : m));
+  sub(/\b(friend|mate|classmate|cousin|called|named|with|and|from)\s+([A-Z][a-z]{2,})(?:\s+([A-Z][a-z]{2,}))?\b(?!\s+(?:School|Academy|Road|Street))/g, (m, a, b, c) => (keepStop(b) ? m : `${a} [name]${c && keepStop(c) ? " " + c : ""}`));
   sub(/\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b/g, (m, a, b) => (keepStop(a) || keepStop(b) ? m : "[name]"));
   /* a name at the very start followed by a comma ("Aisha, ...") */
   return { text: t, changed: n > 0, count: n };
@@ -1832,53 +1832,103 @@ function scrub(input) {
 /* ---------- the local check: a backstop that works with no AI. It would rather catch too much than miss a risk. ---------- */
 const TIER_RANK = { safe: 0, sensitive: 1, risk: 2 };
 const CATEGORIES = ["abuse_or_hurt", "neglect_or_unsafe_home", "self_harm_or_suicide", "online_contact", "death_grief", "illness", "bodies_puberty", "reproduction", "war_violence", "family_change", "religion_belief", "identity", "unclear", "none"];
-const KINFOLK = "uncle|aunt|auntie|aunty|dad|daddy|mum|mummy|mom|mommy|stepdad|stepmum|stepmom|step-dad|step-mum|stepfather|stepmother|brother|sister|cousin|nan|nana|gran|granny|grandma|grandad|grandpa|grandfather|grandmother|teacher|babysitter|neighbou?r|carer|friend|mate|classmate|boyfriend|girlfriend|parent|parents|mother|father|foster \\w+|step\\w+";
-const WHO = `(?:someone|somebody|a (?:man|lady|woman|boy|girl|big boy|big girl|stranger|grown-?up|adult|teacher|bully)|grown-?ups?|adults?|he|she|they|(?:the )?(?:(?:big|older|other|bad|mean) )?(?:boys|girls|kids|children|bullies)|other kids|big kids|older kids|everyone|\\[name\\]|my (?:\\w+ ){0,2}(?:${KINFOLK})|(?:his|her|their) (?:dad|mum|mom|uncle|brother|sister|teacher|friend|stepdad|stepmum)|\\w+'s (?:friend|dad|mum|uncle|brother))`;
-const HARMV = "hurt|hurts|hurting|hit|hits|hitting|beat|beats|beating|kick|kicks|kicking|punch|punches|punching|slap|slaps|slapping|smack|smacks|shove|shoves|push|pushes|pushed|choke|chokes|strangle|strangles|bite|bites|bit|burn|burns|burned|burnt|stab|stabs|whip|whips|threaten|threatens|threatened|shake|shakes|grab|grabs|grabbed|pinch|pinches|lock|locks|locked|tie|ties|tied|touch|touches|touched|touching|kiss|kisses|kissed|bully|bullies|bullied|bullying|pick on|picks on|picked on|scare|scares|frighten|frightens|shout at|shouts at|yell at|yells at|spit on|spits on";
-const OBJP = "(?:me|us|him|her|them|mum|mom|mummy|mommy|dad|daddy|my \\w+|the baby|a baby|your (?:body|private\\w*))";
-const ANIMALS = /\b(?:cats?|kittens?|lions?|tigers?|foxes|fox|owls?|spiders?|snakes?|sharks?|wolf|wolves|dogs?|puppy|puppies|hawks?|eagles?|bears?|predators?|prey|mice|mouse|rats?|insects?|bugs?|flies|fish|frogs?|birds?|bees?|wasps?|ants?|dinosaurs?|crocodiles?|alligators?|hamsters?|rabbits?|horses?|goats?|geese|goose|cows?|pigs?|sheep|animals?|food chain|hunt\w*|plants?|venus fly ?trap)\b/;
-const HUMANISH = /\b(?:people|person|man|men|woman|women|boy|boys|girl|girls|kid|kids|child|children|grown-?ups?|adults?|someone|somebody|uncle|aunt\w*|dad|daddy|mum|mummy|mom|mommy|brother|sister|teacher|friend|stranger|bully|bullies|soldiers?|police)\b/;
-const NATURE_ONLY = /\b(?:plants?|flowers?|leaf|leaves|trees?|grass|seeds?|stars?|batter(?:y|ies)|phones?|fires?|candles?|coral|cells?|bacteria|germs|dinosaurs?|bees?|ants?|insects?|bugs?|fish|stars)\b/;
-const PERSONAL = /\b(?:my|our|grandma|grandad|grandpa|nan|nana|gran|granny|mum|dad|mummy|daddy|uncle|aunt|auntie|friend|pet|hamster|dog|cat|rabbit|fish|goldfish|people|person|we|humans?|someone|everyone)\b/;
+/* Text is made plain first: lower case, contractions opened ("dont" and "don't" both become "do not"), child spellings mended, apostrophes and hyphens gone. */
+function normText(s) {
+  let t = String(s ?? "").toLowerCase().replace(/[’‘`´]/g, "'");
+  const fix = [
+    [/\b(?:i'm|im)\b/g, "i am"], [/\b(?:i've|ive)\b/g, "i have"], [/\bi'd\b/g, "i would"], [/\bi'll\b/g, "i will"],
+    [/\bill (?=(?:get|be|go|tell|never|not|have|take|see|say|run|die|hurt|kill|end|do)\b)/g, "i will "],
+    [/\b(he|she|it|that|there|what|who|here|where)'s\b/g, "$1 is"], [/\bhes\b/g, "he is"], [/\bshes\b/g, "she is"],
+    [/\b(you|they|we)'re\b/g, "$1 are"], [/\byoure\b/g, "you are"], [/\btheyre\b/g, "they are"],
+    [/\bdon'?t\b/g, "do not"], [/\bdoesn'?t\b/g, "does not"], [/\bdidn'?t\b/g, "did not"], [/\bcan'?t\b/g, "can not"], [/\bcannot\b/g, "can not"],
+    [/\bwon'?t\b/g, "will not"], [/\bwouldn'?t\b/g, "would not"], [/\bcouldn'?t\b/g, "could not"], [/\bshouldn'?t\b/g, "should not"],
+    [/\bisn'?t\b/g, "is not"], [/\baren'?t\b/g, "are not"], [/\bwasn'?t\b/g, "was not"], [/\bweren'?t\b/g, "were not"], [/\bhaven'?t\b/g, "have not"], [/\bhasn'?t\b/g, "has not"],
+    [/\bwanna\b/g, "want to"], [/\bgonna\b/g, "going to"], [/\bgotta\b/g, "got to"], [/\bu\b/g, "you"], [/\bur\b/g, "your"], [/\bplz\b|\bpls\b/g, "please"],
+    [/\bnite\b/g, "night"], [/\b(?:scard|scaard|skared|scarred|scered|scaered)\b/g, "scared"], [/\blef\b/g, "left"], [/\bmi\b/g, "my"],
+    [/\b(?:hittin|hitin)\b/g, "hitting"], [/\bslappin\b/g, "slapping"], [/\bgrabbin\b/g, "grabbing"], [/\bsmackin\b/g, "smacking"], [/\b(hurt|kick|punch|beat|shout|scream|touch|push|pull|throw|chok|burn)in\b/g, "$1ing"], [/\bbullyin\b/g, "bullying"]
+  ];
+  for (const [re, to] of fix) t = t.replace(re, to);
+  return " " + t.replace(/'s\b/g, "").replace(/'/g, "").replace(/[-–—]/g, " ").replace(/\s+/g, " ").trim() + " ";
+}
+const KINW = "mum|mom|mummy|mommy|mam|mama|mother|dad|daddy|father|papa|stepdad|step dad|stepmum|step mum|stepmom|stepmother|stepfather|nan|nana|nanny|gran|granny|grandma|grandad|grandpa|grandmother|grandfather|uncle|aunt|auntie|aunty|brother|sister|cousin|teacher|coach|tutor|babysitter|childminder|carer|neighbour|neighbor|boyfriend|girlfriend|parent|parents|guardian|stranger|man|lady|woman|adult|adults|grown ups?|older kids?|big kids?|bully|bullies|doctor|priest|vicar|driver|police|friend|mate|classmate|he|she|they";
+const KINS = `(?:${KINW})s?`;
+const HUMANW = /\b(?:mum|mom|mummy|mommy|mam|mama|mother|dad|daddy|father|papa|stepdad|stepmum|nan|nana|nanny|gran|granny|grandma|grandad|grandpa|uncle|aunt|auntie|aunty|brother|sister|cousin|teacher|coach|babysitter|carer|parent|parents|stranger|man|lady|woman|adult|adults|grown ups?|people|person|kid|kids|boy|boys|girl|girls|bully|bullies|friend|mate|classmate|someone|somebody)\b/;
+/* a person, or something that stands for one, at the end of a harm verb */
+const T_PRON = "me|us|him|her|them|myself|ourselves|mum|mom|mummy|mommy|dad|daddy|nan|nanny|nana|gran|granny|grandma|grandad|grandpa|brother|sister|baby|cousin|my (?:mum|mom|mummy|dad|daddy|brother|sister|baby|nan|nanny|friend|friends|cousin|family)";
+const T_ANY = `${T_PRON}|(?:my|our|his|her|their) \\w+`;
+const BODY = "(?:body|private \\w+|bum|bottom|chest|tummy|belly|legs?|thighs?|hair|arm|arms|neck|breasts?|boobs|privates)";
+const STRONG_V = "hit|hits|hitting|hurt|hurts|hurting|kick|kicks|kicking|punch|punches|punching|beat|beats|beating|slap|slaps|slapping|smack|smacks|smacking|belt|belts|belted|whip|whips|whipped|spank|spanks|spanked|choke|chokes|choked|strangle|strangles|stab|stabs|stabbed|starve|starves|starving|bully|bullies|bullied|bullying|abuse|abuses|abused|abusing|hurted";
+const WEAK_V = "push|pushes|pushed|pushing|shove|shoves|shoved|shoving|pull|pulls|pulled|throw|throws|threw|drag|drags|dragged|grab|grabs|grabbed|grabbing|shake|shakes|shook|pinch|pinches|pinched|squeeze|squeezes|spit on|spits on|slam|slams|burn|burns|burnt|burned|bite|bites|bitten|scare|scares|scared|frighten|frightens|threaten|threatens|threatened|kill|kills|lock|locks|locked|tie|ties|tied|touch|touches|touched|touching|kiss|kisses|kissed|tickle|tickles";
+const HARM_STRONG = new RegExp(`\\b(?:${STRONG_V})\\b(?: (?:at|on|in|to|up|out|over|around|off|down|with))?(?: \\w+){0,2}? (?:${T_ANY})\\b`, "g");
+const HARM_WEAK = new RegExp(`\\b(?:${WEAK_V})\\b(?: (?:at|on|in|to|up|out|over|around|off|down|with))?(?: \\w+){0,2}? (?:${T_PRON}|my ${BODY})\\b`, "g");
+const HARM_SHOUT = new RegExp(`\\b(?:shout|shouts|shouted|shouting|yell|yells|yelled|yelling|scream|screams|screamed|screaming|swear|swears|swore|swearing|growl|growls)\\b(?: at| to)? (?:${T_PRON})\\b`, "g");
+const HARM_BREAK = /\b(?:broke|breaks|breaking|snapped|cracked|twisted)\b(?: \w+){0,2}? (?:arm|leg|nose|finger|fingers|tooth|teeth|wrist|rib|ribs|bone|bones|jaw|skull|neck)\b/g;
+const HARM_BIT = new RegExp(`\\b(?:bit|bitten) (?:me|us|him|her|them|my \\w+)\\b`, "g");
+const HARM_PASSIVE = /\b(?:i|we|he|she|they|me|us|my \w+) (?:am|is|are|was|were|get|gets|got|getting|being|keep getting|always get|always getting|have been|has been|had been)(?: being| always| often| sometimes| really| badly)? (?:hit|hurt|kicked|punched|beaten|slapped|smacked|shoved|pushed|bullied|touched|grabbed|bitten|burned|burnt|locked|tied|shouted at|screamed at|yelled at|starved|threatened|spanked|whipped|choked|abused|belted|dragged|thrown)\b/;
+const COERCE = /\b(?:make|makes|made|making|force|forces|forced|forcing)\s+(?:me|us|him|her|them)\s+(?:to )?(?:do (?:things|stuff|something|what)|touch|show|take off|undress|strip|kiss|keep|send|steal|lie|drink|smoke|kneel|pose|watch|look|sit on|sleep with|get in)\b/;
+const NONHUMAN = /\b(?:ball|balls|stone|rock|branch|door|wave|waves|wind|swing|bat|bee|bees|wasp|wasps|dog|dogs|cat|cats|puppy|kitten|horse|cow|goat|goose|geese|bird|spider|snake|fish|crab|insect|bug|mosquito|tree|car|bike|bus|train|plane|pain|tummy|belly|stomach|head|knee|knees|leg|arm|tooth|teeth|eye|eyes|ear|ears|throat|back|foot|feet|hand|hands|chest|neck|heart|finger|fingers|toe|toes|skin|hamster|rabbit|animal|ant|ants|ghost|monster|dragon|lion|tiger|shark|bear|wolf|fox)\b/;
+/* a hit, hurt, shout, touch or force aimed at the child or someone they know is risk, whoever does it: "Jake", "Daddy", "my coach", a name, a noun. */
+function harmCheck(sentence) {
+  let soft = false;
+  for (const re of [HARM_STRONG, HARM_WEAK, HARM_SHOUT, HARM_BIT, HARM_BREAK]) {
+    re.lastIndex = 0; let m;
+    while ((m = re.exec(sentence))) {
+      const before = sentence.slice(0, m.index).trim().split(" ").filter(Boolean).slice(-3), prev = before[before.length - 1] || "";
+      const thing = /^(?:it|this|that|which|what|everything|something|nothing)$/.test(prev) || (before.some((w) => NONHUMAN.test(w)) && !HUMANW.test(sentence));
+      const mine = before.slice(-2).includes("i") && /^(?:broke|snapped|cracked|twisted|hit|hits|hitting|hurt|hurts|hurting|kick|kicks|kicking|punch|punches|punching|push|pushes|pushed|shove|shoved|bite|bites|grab|grabbed|pinch|pinched|throw|threw|bully|bullies|scare|scares|shake|shook|slap|slapped|squeeze|squeezes|tickle|tickles|pull|pulled|kiss|kissed|touch|touches|touched)\b/.test(m[0]); /* the child doing it, not having it done to them */
+      if (thing || mine) { soft = true; continue; }
+      return "risk";
+    }
+  }
+  return soft ? "sensitive" : null;
+}
 const RULES = [
-  /* risk: possible harm to this child, or to someone they know */
-  { tier: "risk", cat: "abuse_or_hurt", reason: "The words suggest someone may be hurting, frightening or touching the child or someone they know.", re: new RegExp(`\\b${WHO}\\b[^.?!]{0,30}?\\b(?:${HARMV})\\b[^.?!]{0,25}?\\b${OBJP}\\b`) },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "The words suggest the child may have been touched or hurt.", re: /\b(?:touch|touches|touched|touching|kiss|kisses|kissed|undress\w*)\s+(?:me|us|my|your|you|them|kids|children)\b/ },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "A secret that goes with touching or private parts.", re: /\b(?:touch\w*|kiss\w*|undress\w*|naked|nude|private (?:parts|bits)|privates)\b[^.?!]{0,60}\b(?:secret|don't tell|not tell|don't like|doesn't like|uncomfortable|yucky|icky|funny feeling)\b|\bsecret\b[^.?!]{0,60}\b(?:touch\w*|kiss\w*|undress\w*|naked|nude|private (?:parts|bits)|privates)\b/ },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "The child may have been told to keep something secret.", re: /\b(?:said|says|told me|tells me|made me promise|makes me promise|asked me)\b[^.?!]{0,25}\b(?:not to tell|don't tell|do not tell|keep it (?:a )?secret|keep (?:a )?secret|promise not|our secret)\b|\bour little secret\b/ },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "The child says they are being hit, hurt, made to keep secrets, or followed.", re: /\b(?:i|we)\s+(?:get|got|am|was|keep getting|am being|was being|always get)\s+(?:hit|hurt|beaten|slapped|kicked|punched|pushed|bullied|touched|shouted at|locked in)\b|\b(?:makes?|made|forces?|forced|tells?|told|asks?|asked|wants?)\s+me\s+(?:to\s+)?keep\b[^.?!]{0,12}\bsecrets?\b|\b(?:makes?|made|asks?|asked|tells?|told|wants?|wanted|tries|tried to|forces?)\b[^.?!]{0,15}\b(?:take|takes|taking|get|pull|pulled)\b[^.?!]{0,15}\b(?:clothes|pants|trousers|knickers|underwear|undies)\b|\b(?:clothes|pants|knickers|underwear)\b[^.?!]{0,12}\boff\b[^.?!]{0,20}\b(?:me|my)\b|\bshow\s+(?:me|him|her|them)\s+(?:your|my|his|her)\s+(?:private|body|bits)|\b(?:stranger|man|someone|somebody|person|people|boy|boys|girl)\b[^.?!]{0,15}\b(?:follow|follows|followed|following|chase|chased|chasing|grabbed|grab|offered|tried to take|tried to get)\b[^.?!]{0,15}\b(?:me|us)\b/ },
-  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The child may not be given enough food or care.", re: /\b(?:not allowed|never allowed|isn't allowed|aren't allowed) to (?:eat|have (?:food|dinner|lunch|breakfast))\b|\b(?:won't|will not|doesn't|does not|don't|never|not|didn't) (?:let|lets) (?:me|us) (?:eat|have (?:food|dinner|lunch|breakfast))\b|\b(?:doesn't|does not|don't|do not|won't|never|not|didn't) (?:feed|feeds|give|gives) (?:me|us)\b/ },
-  { tier: "risk", cat: "self_harm_or_suicide", reason: "The words may mean the child wants to hurt themselves or not be here.", re: /\b(?:hurt|harm|kill|cut|hit|punish|starve|hate)\w*\s+(?:my ?self|myself)\b|\b(?:want|wants|wanted|wanna|going|gonna|wish|thinking of|think about|thought about)\s+(?:to\s+)?(?:die|be dead|disappear|vanish|end it|not be here|not be alive|go away forever|never (?:been )?born|stop living|stop breathing|kill myself|jump)\b|\bsuicid\w*|\bself[- ]?harm\w*|\bend my (?:own )?life\b|\btake my (?:own )?life\b|\bbetter off (?:dead|without me)\b|\bwish i (?:was|were) (?:dead|gone|not here|never born)\b|\bi (?:don't|do not|dont) (?:want|wanna) to (?:be here|live|be alive|exist|go on)\b|\bhate myself\b/ },
-  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The words suggest the child may be neglected, left alone or afraid at home.", re: /\b(?:nobody|no one|no-one|noone)\s+(?:feeds|looks after|takes care of|cooks|makes (?:me )?(?:food|dinner|tea))\b|\b(?:left|leaves|leaving|leave|locked|locks|lock)\s+(?:me|us)\s+(?:alone|home alone|in|out|outside|by myself)\b|\bhome alone\b|\balone (?:at home|all|every|the whole|for)\b|\b(?:don't|do not|never|can't|cant) (?:get|have|eat|find) (?:any |enough |a )?(?:food|dinner|breakfast|lunch|to eat)\b|\bnothing to eat\b|\b(?:no|not enough) (?:food|dinner|breakfast|heating)\b|\bhungry (?:all|every)\b|\b(?:don't|do not|dont) want to go home\b|\brun(?:ning)? away\b|\bno one is (?:at )?home\b/ },
-  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The child says they are frightened of home, a person, or being alone.", re: /\b(?:scared|afraid|frightened|terrified|petrified)\b[^.?!]{0,25}\b(?:home|house|dad|daddy|mum|mummy|mom|mommy|uncle|aunt\w*|stepdad|stepmum|him|her|them|someone|somebody|alone|bed|night)\b/ },
-  { tier: "risk", cat: "online_contact", reason: "Someone online or a stranger may be asking the child for something or for secrecy.", re: /\b(?:someone|somebody|a (?:man|stranger|boy|girl|person|friend)|people|they|he|she)\s+(?:online|on (?:the |a |my )?(?:game|app|phone|internet|roblox|minecraft|snapchat|tiktok|instagram|discord|youtube|whatsapp|chat|fortnite|tablet)|from (?:the )?(?:game|internet|app))\b|\bonline\b[^.?!]{0,40}\b(?:asked|asks|ask|wants|wanted|told|tells|messag\w+|texted|sent|says|said|keeps)\s+(?:me|us)\b|\b(?:asked|asks|wants|told|tells)\s+me\s+to\s+(?:send|share|show|take|meet|keep|not tell|delete|turn off|lie)\b|\b(?:don't|do not|dont|not|never) tell\b[^.?!]{0,40}\b(?:picture|photo|pic|online|stranger|secret)\b|\b(?:picture|photo|pic|selfie)\b[^.?!]{0,30}\b(?:and|but) (?:not|don't|do not) tell\b|\bgroom\w*\b|\bmeet (?:up )?(?:with )?(?:a |someone |somebody )?(?:stranger|someone|somebody|man|person)\b[^.?!]{0,15}\b(?:i|from|who|online)\b/ },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "The child may be being hit, hurt, frightened or shouted at, or may know someone who is.", test: (t, ss) => ss.some((s) => harmCheck(s) === "risk") || HARM_PASSIVE.test(t) },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "The child may be made to do things they do not want to do.", re: COERCE },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "Bruises or marks that may come from a person.", re: new RegExp(`\\b(?:bruise|bruises|bruised|black eye|welts?|scars?|marks|bleeding|cuts)\\b[^.?!]{0,40}\\b(?:from|by|because of|after|when)\\b[^.?!]{0,20}\\b${KINS}\\b|\\b${KINS}\\b[^.?!]{0,30}\\b(?:bruise|bruises|bruised|black eye|welts?|marks)\\b|\\b${KINS} (?:leaves?|left|gives?|gave|makes?|made) (?:me )?(?:bruises?|marks|scars?|a black eye)` ) },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "Private parts shown or asked for.", re: /\b(?:shows?|showed|showing|asks? me to show|asked me to show|wants? me to show)\b[^.?!]{0,20}\b(?:willy|penis|vagina|private \w+|privates|bum|bottom|body|boobs|breasts)\b/ },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "A private or rude picture or video, or a touch, that goes with a secret.", re: /\b(?:shows?|showed|showing|sends?|sent|makes? me watch|made me watch|lets? me watch|wants? me to (?:look|watch)\w*|asks? me for|asked me for)\b[^.?!]{0,15}\b(?:rude|naughty|dirty|private|nude|naked|sexy|porn\w*|adult|inappropriate|bad)\b|\b(?:rude|naughty|dirty|nude|naked|porn\w*|sexy|inappropriate) (?:videos?|pictures?|photos?|pics?|films?|clips?|messages?|texts?)\b|\b(?:send|sent|take|took|taking) (?:a |some )?(?:nude|naked|private|rude) (?:pictures?|photos?|pics?|selfies?|videos?)\b|\b(?:touch\w*|kiss\w*|undress\w*|naked|nude|private (?:parts|bits)|privates)\b[^.?!]{0,60}\b(?:secret|do not tell|not tell|do not like|does not like|uncomfortable|yucky|icky|funny feeling)\b|\bsecret\b[^.?!]{0,60}\b(?:touch\w*|kiss\w*|undress\w*|naked|nude|private (?:parts|bits)|privates)\b|\b(?:abuse|abused|abusing|molest\w*|rape|raped|assault\w*|trafficking|groom\w*)\b/ },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "A secret, or being told not to tell, around an adult, stranger or older child.", test: (t) => /\b(?:do not tell|not to tell|must not tell|told me not to|keep it quiet|keep quiet|our little secret|our secret|between us|promise not to tell|promised not to tell|do not say anything|not say anything)\b/.test(t) || (/\b(?:secret|secrets)\b/.test(t) && new RegExp(`\\b(?:${KINS}|boy|boys|girl|girls|kid|kids|online|older|someone|somebody|grown ups?|adults?|they|people|person|him|her)\\b`).test(t)) },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "The child is told something bad will happen if they tell.", re: /\b(?:if|when) (?:i|we) (?:tell|told|say|said|talk|talked|speak|spoke|ask|asked|go to|call|ring)\b[^.?!]{0,50}\b(?:taken away|take me away|put in care|put into care|sent away|send me away|in trouble|be hit|hit me|hurt me|punish\w*|never see|kill|jail|angry)\b|\b(?:taken away|take me away|put in care|sent away|send me away)\b[^.?!]{0,30}\b(?:if|when) (?:i|we) (?:tell|told|say|said|talk|speak|ask)\b|\b(?:threaten\w*|says? (?:i|we) will|said (?:i|we) would)\b[^.?!]{0,40}\b(?:if (?:i|we) tell|taken away|put in care)\b/ },
+  { tier: "risk", cat: "self_harm_or_suicide", reason: "The words may mean the child wants to hurt themselves, to die, or not to be here.", re: /\b(?:hurt|harm|kill|cut|hit|punish|starve|hate|burn|bite|scratch|slap|pinch|choke|bang)\w*\s+(?:my ?self|myself|my own)\b|\b(?:want|wants|wanted|wish|wished|hope|hoped|going|thinking of|think about|thought about|planning)\s+(?:to\s+|i\s+(?:was|were|could|did|would|had)\s+)?(?:die|be dead|dead|disappear|vanish|end it|end it all|not be here|not be alive|not exist|go away forever|never been born|never born|not been born|not born|stop living|stop breathing|kill myself|jump|sleep forever|not wake up|never wake up|not wake)\b|\b(?:do not|did not|would not|will not) (?:want|wanna) (?:to )?(?:be here|live|be alive|exist|go on|be around|be me|stay here|wake up|be at home)\b|\b(?:want|wants|wanted|wish|wished) (?:i|to) (?:was|were|am|be) (?:not|never) (?:here|alive|born|around|me)\b|\b(?:wish|want|hope|wanted|could|if only)\b[^.?!]{0,30}\b(?:not wake up|never wake up|not wake|sleep forever)\b|\b(?:do not|did not) like (?:being alive|being here|living|my life|being me|myself)\b|\b(?:hate|hated) (?:being alive|my life|living|being here)\b|\bsuicid\w*|\bself ?harm\w*|\bend my (?:own )?(?:life|it all)\b|\btake my (?:own )?life\b|\b(?:better|happier|world better) (?:off )?without me\b|\bno ?one would (?:miss|care|notice)\b|\bi am a burden\b|\bwish i (?:was|were|had) (?:dead|gone|not here|never born|not born|never been born|invisible)\b|\bhow (?:do|can|could|would) i (?:die|kill myself|disappear|end it|hurt myself|stop breathing)\b|\bhate myself\b|\bwhy (?:do|am) i (?:want|wanting) to (?:die|disappear|hurt|be dead)|\b(?:i|me)\b[^.?!]{0,30}\b(?:disappear|vanish)\b|\b(?:disappear|vanish)\b[^.?!]{0,20}\b(?:forever|for good)\b/ },
+  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The words suggest the child may be neglected, left alone, not fed, or caring for a carer who is unwell or drunk.", re: new RegExp(`\\b(?:nobody|no one|noone)\\b[^.?!]{0,30}\\b(?:feeds?|looks? after|takes? care|cooks?|makes? (?:me )?(?:food|dinner|tea|breakfast)|picks?|picked|collects?|collected|walks?|puts? me to bed|checks? on|is (?:at )?home|is there|comes?|came|turns? up|shows? up|is coming|helps? me|buys?|gets? me|get me|fetch\\w*|knows where i am)\\b|\\b(?:left|leaves|leaving|leave|locks?|locked|shuts?|shut)\\b[^.?!]{0,25}?\\b(?:me|us|my|our)\\b[^.?!]{0,30}?\\b(?:alone|on (?:my|our) own|by (?:myself|ourselves)|all night|all day|all weekend|overnight|for days|home alone)\\b|\\b(?:left|leaves|leaving|leave|locks?|locked|shuts?|shut)\\s+(?:me|us|him|her|them)\\s+(?:home|in|out|outside)\\b|\\bhome alone\\b|\\b(?:alone|on my own|by myself) (?:at home|all|every|for|the whole|at night|in the house)\\b|\\b(?:sleep|sleeps|slept|stay|stays|am|is|are|live|lives) (?:here |there |at home )?(?:alone|on my own|by myself)\\b[^.?!]{0,40}\\b(?:nobody|no one|night|mum|dad|home)\\b|\\b(?:do not|does not|never|can not|will not|did not)(?: i| we| you)? (?:get|have|eat|find|feed|give)\\b[^.?!]{0,12}\\b(?:food|dinner|breakfast|lunch|tea|to eat|anything to eat|enough to eat)\\b|\\bnothing to eat\\b|\\b(?:i|we) (?:have|had|has) not (?:eaten|had (?:anything|any food|dinner|lunch|breakfast))\\b|\\b(?:i|we) (?:did not|do not|could not|can not) eat (?:anything )?(?:today|yesterday|all day|for)\\b|\\b(?:i|we) (?:have to |always |must |had to )?(?:look|looks|looking|looked|take|taking|took) (?:care )?(?:of|after) (?:my|our) (?:little |baby |younger )?(?:brother|sister|siblings?|baby|mum|mom|dad)(?=[.,?! ]*$| by myself| alone| on my own| because| all | every | when | while | and | but | so )|\\b${KINS}\\b[^.?!]{0,15}\\b(?:never|hardly ever|rarely) (?:in|home|there|around|here|at home)\\b|\\b(?:no|not enough) (?:food|dinner|breakfast|heating|electric|clothes)\\b|\\bhungry (?:all|every|at night|at home|always)\\b|\\bgo to bed hungry\\b|\\bnot allowed to (?:eat|have food)\\b|\\bdo not want to (?:go|be|stay) (?:home|at home|back home)\\b|\\brun(?:ning)? away\\b|\\bleave home\\b|\\bno ?one (?:is )?(?:at )?home\\b|\\b${KINS} (?:\\w+ ){0,3}(?:drinks|drank|drinking|drunk|is drunk|gets drunk|takes drugs|on drugs|pills|passes out|passed out|passes out|falls over|fell over|falls down|collapsed|unconscious|sleeps all day|asleep all day|is always asleep|does not wake up|will not wake up|can not wake up|not wake up|is sick all the time|cries all the time)\\b|\\b(?:wake|waking) (?:up )?(?:my |the )?${KINS}\\b[^.?!]{0,20}\\b(?:can not|could not|will not|does not|not)\\b|\\bcan not wake\\b|\\b(?:do not|does not|did not) feel safe\\b|\\bnot safe (?:at|with|in)\\b|\\bunsafe\\b` ) },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "The child describes an adult who is violent, very angry, or a home they hide in.", test: (t) => new RegExp(`\\b${KINS}\\b[^.?!]{0,30}\\b(?:always|keeps?|all the time|every day|every night|again)\\b[^.?!]{0,12}\\b(?:shouting|screaming|yelling|throwing|breaking|smashing|fighting|angry|drunk|crying)\\b|\\b(?:${KINS}|he|she)\\b[^.?!]{0,25}\\b(?:throws?|threw|throwing|breaks?|broke|smash\\w*|punch\\w* (?:a |the )?wall)\\b[^.?!]{0,6}\\b(?:things|plates|stuff|furniture|the (?:tv|door|phone)|glasses|chairs?)\\b|\\b(?:hide|hiding|hid|hides|run and hide)\\b[^.?!]{0,30}\\b(?:from|because|when|until)\\b[^.?!]{0,20}\\b(?:${KINS}|he|she)\\b`).test(t) },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "An adult or older person in the child's bed, bedroom or bathroom, or at night.", test: (t) => new RegExp(`\\b${KINS}\\b[^.?!]{0,25}\\b(?:sleeps?|sleeping|slept|climbs?|climbed|gets?|got|lies|lay|lying)\\b[^.?!]{0,6}\\b(?:in|into|on|with|next to) (?:my )?(?:bed|me)\\b|\\b${KINS}\\b[^.?!]{0,25}\\b(?:comes?|came|enters?|entered|goes|goes|walks?|walked|creeps?|crept|sneaks?)\\b[^.?!]{0,8}\\b(?:in|into|to) (?:my )?(?:room|bedroom|bed)\\b[^.?!]{0,25}\\b(?:night|dark|asleep|sleeping|naked|late|alone|when mum|when dad|when we are alone)\\b|\\b(?:look|looks|looking|watch|watches|watching|stare|stares|staring|peek|peeks|peeking)\\b[^.?!]{0,12}\\b(?:in|while|when)\\b[^.?!]{0,10}\\b(?:shower|bath|toilet|bathroom|changing|getting changed|undressed|naked|dressing)\\b|\\b(?:comes?|came|walks?|walked) in(?:to)? (?:the )?(?:shower|bathroom|toilet|bath)\\b[^.?!]{0,15}\\b(?:i am|when i|while i)\\b`).test(t) },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "Someone does things to the child that the child does not like or has been told to hide.", re: /\b(?:does|did|do|doing|made|makes|make|making|wants to do|want to do)\s+(?:\w+ )?(?:bad|rude|naughty|horrible|nasty|yucky|private|secret|funny|weird|sexy|dirty)\s+(?:things|stuff)\b|\b(?:does|did|do|doing)\s+(?:\w+ )?things to (?:me|us)\b|\b(?:bruises?|marks|bruised)\b[^.?!]{0,40}\b(?:do not want to (?:change|undress|get undressed|swim|go swimming|go to swimming|take off)|hide|hiding|cover|covering|long sleeves)\b|\b(?:hide|hiding|cover|covering)\b[^.?!]{0,10}\b(?:bruises?|marks|cuts|scars)\b/ },
+  { tier: "risk", cat: "online_contact", reason: "A stranger or older person is asking the child for personal details, or flattering the child.", test: (t) => new RegExp(`\\b(?:man|stranger|someone|somebody|boy|girl|person|older \\w+|teenager|lady|woman)\\b[^.?!]{0,30}\\b(?:wanted|asked for|asks for|wants|asked|asks|took|takes|got)\\b[^.?!]{0,14}\\b(?:my )?(?:number|phone number|address|where i live|picture|pictures|photo|photos|snapchat|instagram|whatsapp)\\b|\\b(?:said|says|called|calls|told|tells)\\b[^.?!]{0,10}\\b(?:i am|me|you are) (?:so |very )?(?:pretty|cute|beautiful|sexy|hot|special|handsome|mature|grown up)\\b`).test(t) },
+  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The child may not have money, food or care at home, or may be left behind.", re: /\b(?:no|not enough|run out of|out of|have not got|do not have|never have|no more)\s+(?:any\s+)?(?:money|cash)\b[^.?!]{0,20}\b(?:food|eat|dinner|bills|heating|rent|electric\w*|gas|clothes)\b|\b(?:do not|does not|will not|never|did not|can not)\s+(?:give|gives|let|lets|buy|buys)\s+(?:me|us)\s+(?:my |any |a |our )?(?:medicine|medication|tablets|pills|inhaler|insulin|drink|water|bath|wash|clean clothes|new shoes|dinner|breakfast|lunch|food)\b|\b(?:do not|did not|can not|never|not allowed to)\s+(?:i |we )?get (?:to )?(?:eat|have food|have dinner|drink|wash|sleep|have a bath|have breakfast|have lunch)\b|\b(?:never|not|will not|would not) (?:come|coming|came|be) back\b[^.?!]{0,20}\b(?:mum|mom|dad|mummy|daddy|nan|gran|she|he)\b|\b(?:mum|mom|dad|mummy|daddy|nan|gran|she|he)\b[^.?!]{0,30}\b(?:leave|leaving|left|gone|go away|abandon\w*|walk out)\b[^.?!]{0,25}\b(?:never|for good|forever|not coming back)\b|\b(?:can not|could not|do not want to|will not) (?:go|get|stay|be) (?:back )?(?:home|at home)\b/ },
+  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The child says they are frightened of a person, or of home.", test: (t) => /\b(?:i|my|me|we|our)\b/.test(t) && new RegExp(`\\b(?:scared|afraid|frightened|terrified|petrified|fear|fearful|dread|dreading)\\b[^.?!]{0,35}\\b(?:home|house|flat|bedroom|him|her|them|someone|somebody|you|alone|(?:${KINW.replace("|they", "")}))\\b|\\b(?:home|house|flat|bedroom|him|her|someone|somebody|(?:${KINW.replace("|they", "")}))\\b[^.?!]{0,25}\\b(?:scares?|frightens?|makes? me (?:feel )?(?:so |very )?(?:scared|afraid|frightened|sad|small|unsafe|uncomfortable|worried|yucky)|is scary|are scary)\\b`).test(t) },
+  { tier: "risk", cat: "online_contact", reason: "Someone online or a stranger may be asking the child for something or for secrecy.", re: /\b(?:someone|somebody|a (?:man|stranger|boy|girl|person|friend)|people|they|he|she)\s+(?:online|on (?:the |a |my )?(?:game|app|phone|internet|roblox|minecraft|snapchat|tiktok|instagram|discord|youtube|whatsapp|chat|fortnite|tablet)|from (?:the )?(?:game|internet|app))\b|\bonline\b[^.?!]{0,40}\b(?:asked|asks|ask|wants|wanted|told|tells|messag\w+|texted|sent|says|said|keeps)\s+(?:me|us)\b|\b(?:asked|asks|wants|told|tells)\s+me\s+to\s+(?:send|share|show|take|meet|keep|not tell|delete|turn off|lie)\b|\b(?:do not|not|never) tell\b[^.?!]{0,40}\b(?:picture|photo|pic|online|stranger|secret)\b|\b(?:picture|photo|pic|selfie)\b[^.?!]{0,30}\b(?:and|but) (?:not|do not) tell\b|\bgroom\w*\b|\bmeet (?:up )?(?:with )?(?:a |someone |somebody )?(?:stranger|someone|somebody|man|person)\b[^.?!]{0,15}\b(?:i|from|who|online)\b|\b(?:stranger|man|lady|woman|someone|somebody|person)\b[^.?!]{0,25}\b(?:asked|told|wanted|says|said|tried|tries|wants)\b[^.?!]{0,8}\b(?:me|us)\b[^.?!]{0,8}\bto (?:get in|get into|come with|come in|go with|go in|follow|meet|open|take)\b|\b(?:stranger|man|someone|somebody|person|people|boy|boys|girl)\b[^.?!]{0,15}\b(?:follow|follows|followed|following|chase|chased|chasing|offered|tried to take|tried to get)\b[^.?!]{0,15}\b(?:me|us)\b/ },
   /* sensitive: a topic the teacher should decide on */
-  { tier: "sensitive", cat: "unclear", key: "injection", reason: "The words tell the AI to ignore its rules.", re: /\b(?:ignore|disregard|forget|bypass|override)\s+(?:all |any |your |the |previous |prior |these |those |my |every )*(?:rules?|instructions?|prompts?|guidelines?|safety|filters?|training|limits|restrictions?)\b|\b(?:system|developer) prompt\b|\bjailbreak\b|\bdo anything now\b|\bpretend (?:you are|you're|to be|that you)\b|\byou are now\b|\bwithout (?:any )?(?:rules|filters|restrictions)\b|\bno rules\b|\breveal your (?:prompt|instructions)\b/ },
-  { tier: "sensitive", cat: "unclear", key: "feelings", reason: "The child may be sad, scared or in pain. A teacher should check in.", re: /\b(?:i|i'm|im|i am|i feel|feel|feeling|why am i|why do i feel|why do i get)\b[^.?!]{0,14}\b(?:sad|lonely|unhappy|depressed|crying|upset|worthless|useless|stupid|ugly|worried|anxious|nervous|scared|afraid|frightened|terrified)\b|\b(?:nobody|no one) (?:likes|loves|cares about|wants) me\b/ },
-  { tier: "sensitive", cat: "unclear", key: "feelings", reason: "The child mentions pain or a secret about themselves.", re: /\b(?:my|i)\b[^.?!]{0,20}\b(?:hurt|hurts|hurting|pain|painful|ache|aches|sore|bleed\w*|bruise\w*|bruised)\b|\b(?:i have|i've got|we have|my) (?:a )?secrets?\b|\bkeep(?:ing)? (?:a |it a )?secret\b/ },
+  { tier: "sensitive", cat: "unclear", key: "injection", reason: "The words tell the AI to ignore its rules.", re: /\b(?:ignore|disregard|forget|bypass|override)\s+(?:all |any |your |the |previous |prior |these |those |my |every )*(?:rules?|instructions?|prompts?|guidelines?|safety|filters?|training|limits|restrictions?)\b|\b(?:system|developer) prompt\b|\bjailbreak\b|\bdo anything now\b|\bpretend (?:you are|to be|that you)\b|\byou are now\b|\bwithout (?:any )?(?:rules|filters|restrictions)\b|\bno rules\b|\breveal your (?:prompt|instructions)\b/ },
+  { tier: "sensitive", cat: "unclear", key: "feelings", reason: "The child may be sad, scared or in pain. A teacher should check in.", re: /\b(?:i|i am|i feel|feel|feeling|why am i|why do i feel|why do i get)\b[^.?!]{0,14}\b(?:sad|lonely|unhappy|depressed|crying|upset|worthless|useless|stupid|ugly|worried|anxious|nervous|scared|afraid|frightened|terrified|angry all)\b|\b(?:nobody|no one) (?:likes|loves|cares about|wants|plays with) me\b|\bdo not want to go to school\b/ },
+  { tier: "sensitive", cat: "unclear", key: "feelings", reason: "The child mentions pain or a secret about themselves.", re: /\b(?:my|i)\b[^.?!]{0,20}\b(?:hurt|hurts|hurting|pain|painful|ache|aches|sore|bleed\w*|bruise\w*|bruised)\b|\b(?:i have|i have got|we have|my) (?:a )?secrets?\b|\bkeep(?:ing)? (?:a |it a )?secret\b/ },
   { tier: "sensitive", cat: "illness", reason: "Illness, injury or hospital.", re: /\b(?:ill|illness|cancer|hospital|poorly|chemo\w*|disease|surgery|operation|dying|leuk\w*mia|diabet\w*|asthma)\b|\b(?:bit|bitten|stung|scratched|burnt|burned|broke|broken|bleeding|bruise\w*|injur\w*|hurt)\b[^.?!]{0,10}\b(?:me|my|i)\b/ },
-  { tier: "sensitive", cat: "bodies_puberty", reason: "Bodies and growing up.", re: /\bpuberty\b|\b(?:private|intimate) (?:parts|bits|areas)\b|\bpenis\b|\bvagina\b|\bwilly\b|\btesticles?\b|\bbreasts?\b|\bboobs?\b|\bpubic\b|(?<!\btime )(?<!\bice age )(?<!\bgeological )\bperiods?\b(?! of )(?![^.?!]{0,12}\b(?:table|in history|dot|full stop)\b)|\bhair\b[^.?!]{0,16}\b(?:growing|grow|grows)\b[^.?!]{0,16}\b(?:places|body|armpits?|legs?)\b|\bhair (?:in|on) (?:funny|weird|strange|odd|my) (?:places|body)\b|\b(?:funny|weird|strange|odd) places\b|\bdifferent bodies\b|\bbra\b|\bsex\b|\bsexual\w*|\bnaked\b|\bnude\b|\bperiod pain\b|\bgrowing up\b/ },
+  { tier: "sensitive", cat: "bodies_puberty", reason: "Bodies and growing up.", re: /\bpuberty\b|\b(?:private|intimate) (?:parts|bits|areas)\b|\bpenis\b|\bvagina\b|\bwilly\b|\btesticles?\b|\bbreasts?\b|\bboobs?\b|\bpubic\b|\bhair\b[^.?!]{0,16}\b(?:growing|grow|grows)\b[^.?!]{0,16}\b(?:places|body|armpits?|legs?)\b|\bhair (?:in|on) (?:funny|weird|strange|odd|my) (?:places|body)\b|\b(?:funny|weird|strange|odd) places\b|\bdifferent bodies\b|\bbra\b|\bsex\b|\bsexual\w*|\bnaked\b|\bnude\b|\bperiod pain\b|\bgrowing up\b/ },
+  { tier: "sensitive", cat: "bodies_puberty", reason: "Bodies and growing up.", test: (t) => { const m = /\bperiods?\b/.exec(t); return !!m && !/\b(?:time|ice age|geological|school|history|historical|stone age|long|dry|wet|rainy|lesson) $/.test(t.slice(0, m.index)) && !/^(?: of| table| in history| dot| full stop)/.test(t.slice(m.index + m[0].length)); } },
   { tier: "sensitive", cat: "reproduction", reason: "Where babies come from.", re: /\bbab(?:y|ies)\b[^.?!]{0,20}\b(?:come|comes|came|made|born|get made|grow)\b|\bpregnan\w*|\bgiving birth\b|\bhow (?:was|am) i (?:born|made)\b|\bhow are (?:babies|people) (?:born|made)\b/ },
   { tier: "sensitive", cat: "family_change", reason: "Family change.", re: /\bsplit(?:s|ting)? up\b|\bdivorc\w*|\bseparat(?:e|ed|ing|ion)\b[^.?!]{0,20}\b(?:mum|mom|dad|parents)\b|\b(?:mum|mom|dad|parents|mummies|daddies|mummy|daddy)\b[^.?!]{0,25}\b(?:argue|argues|arguing|fight|fights|fighting|break up|breaking up|not live together|moved out)\b|\bstep ?(?:mum|dad|mom|parent|brother|sister)\b|\bfoster\w*|\badopt\w*|\bcustody\b|\bnew baby\b/ },
   { tier: "sensitive", cat: "religion_belief", reason: "Religion or belief.", re: /\bgod\b|\bgods\b|\ballah\b|\bjesus\b|\bheaven\b|\bhell\b|\bpray\w*|\breligio\w*|\bbible\b|\bquran\b|\bkoran\b|\bchurch\b|\bmosque\b|\bsynagogue\b|\btemple\b|\bafterlife\b|\bsouls?\b|\bangels?\b|\breincarnat\w*|\batheis\w*|\bbelieve in\b|\bhindu\w*|\bmuslim\w*|\bchristian\w*|\bjewish\b|\bsikh\w*|\bbuddhis\w*/ },
-  { tier: "sensitive", cat: "identity", reason: "Identity or family make-up.", re: /\btwo (?:mums|dads|mummies|daddies|moms)\b|\bgay\b|\blesbian\b|\bbisexual\b|\btrans(?:gender)?\b|\bgender\w*|\bnon-?binary\b|\bam i a (?:boy|girl)\b|\bwhy am i (?:a )?(?:boy|girl)\b|\bracis\w*|\bdisabilit\w*|\bsame sex\b|\bhomosexual\w*/ },
+  { tier: "sensitive", cat: "identity", reason: "Identity or family make-up.", re: /\btwo (?:mums|dads|mummies|daddies|moms)\b|\bgay\b|\blesbian\b|\bbisexual\b|\btrans(?:gender)?\b|\bgender\w*|\bnon ?binary\b|\bam i a (?:boy|girl)\b|\bwhy am i (?:a )?(?:boy|girl)\b|\bracis\w*|\bdisabilit\w*|\bsame sex\b|\bhomosexual\w*/ },
   { tier: "sensitive", cat: "war_violence", reason: "War, weapons or violence.", re: /\b(?:wars?|soldiers?|army|armies|battles?|military|invad\w*|invasion|missiles?|nuclear|bombs?|bombing|guns?|weapons?|knife|knives|terroris\w*|massacre|genocide|torture\w*|execut\w*|murder\w*|stab\w*|shooting|shot dead)\b/ },
-  { tier: "sensitive", cat: "war_violence", reason: "Violence between people.", soft: true, re: /\b(?:kill|kills|killing|killed|fight|fights|fighting|hit each other|hurt each other|hurting people|hit people|hits people|hurt people|shoot|shoots)\b|\bpeople (?:hit|hurt|punch|bully)\b|\bwhy do (?:boys|girls|kids|children|people|grown-?ups|adults) (?:hit|hurt|punch|bully|fight|kick)\b/ },
+  { tier: "sensitive", cat: "war_violence", reason: "Violence between people.", soft: true, re: /\b(?:kill|kills|killing|killed|fight|fights|fighting|hit each other|hurt each other|hurting people|hit people|hits people|hurt people|shoot|shoots|hit|hits|hitting|hurt|punch|punches|kick|kicks|bully|bullies|bullying)\b/ },
   { tier: "sensitive", cat: "death_grief", reason: "Death and dying.", death: true, re: /\b(?:die|dies|died|dying|dead|death|deaths|funeral|grave|graveyard|buried|burial|passed away|pass away|cremat\w*|ashes|coffin|ghosts?|haunt\w*)\b/ }
 ];
-function normText(s) {
-  return " " + String(s ?? "").toLowerCase().replace(/[’‘`´]/g, "'").replace(/\bdont\b/g, "don't").replace(/\bdoesnt\b/g, "doesn't").replace(/\bwont\b/g, "won't").replace(/\bdidnt\b/g, "didn't").replace(/\bcant\b/g, "can't").replace(/\bnite\b/g, "night").replace(/\b(?:scard|scaard|skared|scarred|scered|scaered|scar'd)\b/g, "scared").replace(/\blef\b/g, "left").replace(/\bmi\b/g, "my").replace(/\bim\b/g, "i'm").replace(/\bhurtin\b/g, "hurting").replace(/\s+/g, " ").trim() + " ";
-}
+const ANIMALS = /\b(?:cats?|kittens?|lions?|tigers?|foxes|fox|owls?|spiders?|snakes?|sharks?|wolf|wolves|dogs?|puppy|puppies|hawks?|eagles?|bears?|predators?|prey|mice|mouse|rats?|insects?|bugs?|flies|fish|frogs?|birds?|bees?|wasps?|ants?|dinosaurs?|crocodiles?|alligators?|hamsters?|rabbits?|horses?|goats?|geese|goose|cows?|pigs?|sheep|animals?|food chain|hunt\w*|plants?|venus fly ?trap)\b/;
+const HUMANISH = /\b(?:people|person|man|men|woman|women|boy|boys|girl|girls|kid|kids|child|children|grown ups?|adults?|someone|somebody|uncle|aunt\w*|dad|daddy|mum|mummy|mom|mommy|brother|sister|teacher|friend|stranger|bully|bullies|soldiers?|police)\b/;
+const NATURE_ONLY = /\b(?:plants?|flowers?|leaf|leaves|trees?|grass|seeds?|stars?|batter(?:y|ies)|phones?|fires?|candles?|coral|cells?|bacteria|germs|dinosaurs?|bees?|ants?|insects?|bugs?|fish|stars)\b/;
+const PERSONAL = /\b(?:my|our|grandma|grandad|grandpa|nan|nana|gran|granny|mum|dad|mummy|daddy|uncle|aunt|auntie|friend|pet|hamster|dog|cat|rabbit|fish|goldfish|people|person|we|humans?|someone|everyone)\b/;
 function localCheck(text) {
   const t = normText(text);
   if (!/[a-z]{2}/.test(t)) return { tier: "sensitive", category: "unclear", reason: "The question is empty, unreadable or in another language.", key: "unclear" };
+  const ss = t.split(/[.?!;\n]+/).map((x) => " " + x.trim() + " ");
   let best = { tier: "safe", category: "none", reason: "", key: "" };
-  const human = HUMANISH.test(t), animal = ANIMALS.test(t), personal = PERSONAL.test(t);
+  const human = HUMANISH.test(t), animal = ANIMALS.test(t);
   for (const r of RULES) {
     if (TIER_RANK[r.tier] <= TIER_RANK[best.tier]) continue;
-    if (!r.re.test(t)) continue;
+    if (!(r.test ? r.test(t, ss) : r.re.test(t))) continue;
     if (r.soft && animal && !human) continue; /* cats kill mice: a food chain, not violence */
-    if (r.death && NATURE_ONLY.test(t) && !PERSONAL.test(t.replace(/\bpeople\b/g, "")) ) continue; /* plants and stars "die": not about a person or a pet */
+    if (r.death && NATURE_ONLY.test(t) && !PERSONAL.test(t.replace(/\bpeople\b/g, ""))) continue; /* plants and stars "die": not about a person or a pet */
     best = { tier: r.tier, category: r.cat, reason: r.reason, key: r.key || "" };
   }
   return best;
@@ -1955,7 +2005,8 @@ const pendRead = () => {
   } catch { return memPend.slice(); }
 };
 const pendWrite = (a) => { memPend = a.slice(-20); try { if (memPend.length) localStorage.setItem(PEND_KEY, JSON.stringify(memPend)); else localStorage.removeItem(PEND_KEY); } catch {} };
-const queueAlert = (tier, category) => pendWrite([...pendRead(), { tier, category, createdAt: Date.now(), uid: Store.uid }]);
+const queueAlert = (tier, category) => { const e = { tier, category, createdAt: Date.now(), uid: Store.uid }; pendWrite([...pendRead(), e]); return e; };
+const unqueueAlert = (e) => pendWrite(pendRead().filter((x) => !(x.createdAt === e.createdAt && x.uid === e.uid)));
 async function summarise(cid) { /* the one summary document per child that the inbox lists */
   let rows;
   try { const snap = await dbCap.collection(`flags/${cid}/items`).get(); rows = snap.docs.map((d) => d.data()).filter((v) => v && typeof v === "object" && v.tier !== "test"); } catch { return false; }
@@ -1969,7 +2020,7 @@ async function sendAlert(a, { late = false } = {}) {
   const cid = Store.uid;
   if (!dbCap || !cid) return { ok: false };
   const id = "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const item = { tier: a.tier, category: a.category, reason: a.reason || "", question: a.question ?? null, age: a.age ?? null, createdAt: a.createdAt || Date.now(), status: "new", source: a.source || "local" };
+  const item = { tier: a.tier, category: a.category, reason: a.reason || "", question: typeof a.question === "string" ? a.question.slice(0, 500) : null, age: a.age ?? null, createdAt: a.createdAt || Date.now(), status: "new", source: a.source || "local" };
   if (a.failedEarlier) item.failedEarlier = true;
   if (!(await dbTry(() => dbCap.doc(`flags/${cid}/items/${id}`).set(item)))) return { ok: false };
   if (!(await summarise(cid))) return { ok: false };
@@ -2265,25 +2316,34 @@ function openBook(id, { fresh = false } = {}) {
 
 let loadTimer = null;
 const SCRUB_NOTE = "Pip took out some personal details. Pip doesn't need names or addresses to help.";
-let feelRepeat = 0;
+const feelRepeat = new Map(); /* worries about feelings, counted for each child */
 async function start(rawQ, status, opt = {}) {
   const rel = opt.release || null; /* a teacher writing a gentle book: the question was screened already */
   if (!rawQ) { status.textContent = "Type or say your question first."; $("#q")?.focus(); return; }
-  await capsReady;
-  let q = rawQ, scrubbed = false, safetyNote = "";
+  try { if (dict?.active()) dict.stop().catch(() => {}); } catch {} /* the microphone stops once a question is sent */
+  await capsReady; await Store.ready.catch(() => {});
+  let q = rawQ, scrubbed = false;
   if (!rel) {
     const sc = scrub(rawQ); q = sc.text; scrubbed = sc.changed; /* the words as typed are never kept: only the scrubbed text goes on */
     state.question = q;
     const a = localCheck(rawQ), b = localCheck(q), local = TIER_RANK[b.tier] > TIER_RANK[a.tier] ? b : a;
-    renderScreening(local.tier === "safe" && !!sampleFn);
+    if (local.tier !== "safe") { /* a flagged question never waits for the AI: the alert goes first, and the AI can only raise it afterwards */
+      renderScreening(false);
+      let v = { tier: local.tier, category: local.category, reason: local.reason, source: "local" };
+      if (v.tier === "sensitive" && local.key === "feelings") { const k = Store.uid || "none"; feelRepeat.set(k, (feelRepeat.get(k) || 0) + 1); if (feelRepeat.get(k) >= 2) v = { ...v, tier: "risk", reason: v.reason + " The child has said something like this more than once in this visit." }; } /* send higher on repeat */
+      await handleFlagged(v, q);
+      return;
+    }
+    renderScreening(!!sampleFn);
     const ctl = new AbortController(); state.ctl = ctl;
     let v;
     try { v = await screen(q, rawQ, state.age, ctl); }
-    catch (e) { if (e?.code === "cancelled") { renderAsk(q); return; } v = { tier: local.tier, category: local.category, reason: local.reason, key: local.key, source: "local", ranWithoutAI: true }; }
-    if (v.tier === "sensitive" && v.key === "feelings" && ++feelRepeat >= 2) v = { ...v, tier: "risk", reason: v.reason + " The child has said something like this more than once in this visit." }; /* send higher on repeat */
+    catch (e) { if (e?.code === "cancelled") { renderAsk(q); return; } v = { tier: "safe", ranWithoutAI: true }; }
     if (v.tier !== "safe") { await handleFlagged(v, q); return; }
-    safetyNote = v.ranWithoutAI && sampleFn ? "Safety check ran without AI" : "";
     if (!sampleFn) { renderAsk(q); $("#askStatus").textContent = [scrubbed ? SCRUB_NOTE : "", "New books can’t be written outside Claude. Open the sample book from the bookshelf below."].filter(Boolean).join(" "); return; }
+    if (v.ranWithoutAI) { /* fail closed: no book is written unless the AI check said safe too */
+      renderAsk(q); $("#askStatus").textContent = "Pip needs a moment. Please try again in a little while."; return;
+    }
   } else state.question = q;
   renderLoading(scrubbed ? SCRUB_NOTE : "");
   const ctl = new AbortController(); state.ctl = ctl;
@@ -2292,7 +2352,7 @@ async function start(rawQ, status, opt = {}) {
     const book = validBook(raw, state.age);
     if (!book) throw { code: "bad_story" };
     book.question = q; state.book = book; state.bookId = null;
-    renderCheck(book, { id: null, safetyNote, release: rel });
+    renderCheck(book, { id: null, release: rel });
   } catch (e) {
     const msg = { not_granted: "Pip needs permission to write books. Allow it when Claude asks, then try again.", rate_limited: "Pip is out of breath. Wait a minute, then try again.", invalid_json: "Pip’s book came out jumbled. Press the button to try again.", bad_story: "Pip’s book came out jumbled. Press the button to try again." }[e?.code] || "Pip couldn’t write the book just now. Press the button to try again.";
     if (rel) { renderTeacher(e?.code === "cancelled" ? "" : msg.replace("Press the button to try again.", "Try again from the inbox.")); return; }
@@ -2319,7 +2379,7 @@ function renderLoading(note) {
 }
 
 /* ---------- teacher check ---------- */
-function renderCheck(book, { id = null, saved = false, safetyNote = "", release = null } = {}) {
+function renderCheck(book, { id = null, saved = false, release = null } = {}) {
   setStep("check");
   const flags = book.flags || bookFlags(book);
   const facts = el("ul", {}, book.facts_to_check.map((f, i) => el("li", {}, el("label", {}, el("input", { type: "checkbox", id: "fact" + i }), el("span", { text: f })))));
@@ -2334,7 +2394,6 @@ function renderCheck(book, { id = null, saved = false, safetyNote = "", release 
     el("div", { class: "eyebrow", text: "For the teacher" }),
     el("h2", { text: book.title }),
     el("p", { class: "lead", text: `Ages ${book.age_band} · ${book.pages.length - 1} pages · ${plural(book.lessons.length, "lesson")}${book.villain ? " · Villain: " + book.villain.name : ""}` }),
-    safetyNote ? el("p", { class: "label", id: "safetyNote", text: safetyNote }) : null,
     release ? el("p", { class: "label", id: "gentleNote", text: "This is a gentle version for a child who has talked with a teacher. When you release it, it goes onto that child's bookshelf." }) : null,
     book.needs_teacher ? el("div", { class: "warn" }, el("b", { text: "Talk with the child first. " }), el("span", { text: book.teacher_note || "This question touches a sensitive subject." })) : null,
     flags.length ? el("div", { class: "warn", id: "flagBox" }, el("b", { text: "Please look at these:" }), el("ul", {}, flags.map((f) => el("li", { text: f })))) : el("p", { class: "label", id: "flagBox", text: "No problems were found by the automatic checks." }),
@@ -2725,12 +2784,28 @@ async function removeMine() {
   return { books, kept };
 }
 /* a question that was flagged: the alert is written first. Nothing is said about it being sent unless the write resolved. */
+const ALERT_WAIT = 8000; /* if the alert has not been stored in this time, the child is told to find a grown-up */
 async function handleFlagged(v, q) {
   const age = state.age; state.question = "";
-  const res = await sendAlert({ tier: v.tier, category: v.category, reason: v.reason, question: q, source: v.source, age });
-  if (!res.ok) queueAlert(v.tier, v.category);
-  else if (v.tier === "sensitive") Store.noteFlag(res.id);
+  let timer; const timeout = new Promise((r) => { timer = setTimeout(() => r({ ok: false, timedOut: true }), ALERT_WAIT); });
+  const attempt = sendAlert({ tier: v.tier, category: v.category, reason: v.reason, question: q, source: v.source, age }).catch(() => ({ ok: false }));
+  const res = await Promise.race([attempt, timeout]); clearTimeout(timer);
+  if (!res.ok) {
+    const entry = queueAlert(v.tier, v.category);
+    if (res.timedOut) attempt.then((r) => { if (r.ok) unqueueAlert(entry); }); /* it did get stored after all: nothing is left to resend */
+  } else if (v.tier === "sensitive") Store.noteFlag(res.id);
   renderMessage(v.tier, res.ok, age);
+  if (res.ok && v.tier === "sensitive" && v.source === "local" && sampleFn) raiseWithAI(res.id, q, age); /* afterwards, and only upwards */
+}
+/* The AI looks at a held (sensitive) question after the alert is written. It can raise it to risk, and never lower it. */
+async function raiseWithAI(fid, q, age) {
+  const cid = Store.uid, ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
+  try {
+    const ai = await aiClassify(q, age, ctl.signal);
+    if (ai.tier === "safe") return;
+    const patch = ai.tier === "risk" ? { tier: "risk", category: ai.category === "none" ? "unclear" : ai.category, reason: ai.reason || "The AI check raised this to risk.", source: "ai" } : { source: "both" };
+    if (await dbTry(() => dbCap.doc(`flags/${cid}/items/${fid}`).update(patch))) { await summarise(cid); if (ai.tier === "risk") { Store.flags.delete(fid); Store.changed(); } }
+  } catch {} finally { clearTimeout(timer); }
 }
 
 /* ---------- the teacher inbox (only for people who can edit) ---------- */
@@ -2738,13 +2813,25 @@ const Teacher = { is: false, open: 0, urgent: false, showAll: false, rows: [], n
 const fmtTime = (t) => (t ? new Date(t).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "unknown time");
 const CAT_WORD = { abuse_or_hurt: "Someone may be hurting the child", neglect_or_unsafe_home: "Neglect or an unsafe home", self_harm_or_suicide: "Self-harm or wanting to die", online_contact: "Online contact", death_grief: "Death and grief", illness: "Illness or injury", bodies_puberty: "Bodies and growing up", reproduction: "Where babies come from", war_violence: "War or violence", family_change: "Family change", religion_belief: "Religion or belief", identity: "Identity", unclear: "Unclear or feelings", none: "Other" };
 const SOURCE_WORD = { local: "Found by the local check", ai: "Found by the AI check", both: "Found by both checks" };
-function renderBanners() {
+/* a pupil is always named, or else pointed at: a short code from the id, and where to look */
+function pupilLabel(cid, names, at) {
+  const nm = cid && names?.[cid]?.name;
+  if (nm) return nm;
+  return `${cid ? "Pupil " + String(cid).slice(0, 6) + ". " : ""}Name not available: check who used this tablet at ${fmtTime(at)}`;
+}
+let bannerRun = 0;
+async function renderBanners() {
   const box = $("#banners"); if (!box) return;
+  const my = ++bannerRun, pend = Teacher.is ? pendRead() : [];
+  let names = {};
+  const ids = [...new Set(pend.map((x) => x.uid).filter(Boolean))];
+  if (ids.length && userCap) { try { names = await userCap.profiles(ids); } catch {} }
+  if (my !== bannerRun) return;
   const kids = [];
   if (Teacher.is) {
     if (Teacher.urgent) kids.push(el("div", { class: "banner urgent", id: "urgentBanner", role: "alert" }, el("b", { text: "An urgent safety alert is waiting." }), el("button", { class: "btn small", type: "button", id: "urgentOpen", text: "Open the teacher inbox", onclick: () => renderTeacher() })));
-    for (const p of pendRead()) kids.push(el("div", { class: "banner urgent", "data-queued": "1", role: "alert" }, el("span", { text: `A safety alert could not be sent from this tablet at ${fmtTime(p.createdAt)}. Talk with the child now.` }),
-      el("button", { class: "btn small", type: "button", "data-act": "seen-queued", text: "I have seen this", onclick: () => { pendWrite(pendRead().filter((x) => !(x.createdAt === p.createdAt && x.uid === p.uid && x.tier === p.tier))); renderBanners(); } })));
+    for (const p of pend) kids.push(el("div", { class: "banner urgent", "data-queued": "1", role: "alert" }, el("span", { text: `A safety alert could not be sent from this tablet at ${fmtTime(p.createdAt)}. Talk with the child now. ${p.uid && names[p.uid]?.name ? "Pupil: " + names[p.uid].name + "." : (p.uid ? "Pupil " + p.uid.slice(0, 6) + ". " : "") + "Name not available: check who used this tablet at " + fmtTime(p.createdAt) + "."}` }),
+      el("button", { class: "btn small", type: "button", "data-act": "seen-queued", text: "I have seen this", onclick: () => { unqueueAlert(p); renderBanners(); } })));
   }
   box.replaceChildren(...kids);
 }
@@ -2753,46 +2840,56 @@ function updateTeacherBtn() {
   b.textContent = Teacher.open > 0 ? `Teacher (${Teacher.open})` : "Teacher";
   b.setAttribute("aria-label", Teacher.open > 0 ? `Teacher inbox, ${plural(Teacher.open, "open alert")}` : "Teacher inbox");
 }
-Teacher.refresh = async function () { /* counts and the urgent banner, from the one summary per child */
+/* Every child's own items are read, not just the children whose summary says something is open: a summary can be overwritten by a teacher's write. */
+Teacher.readAll = async function (all) {
+  const rows = [], snap = await dbCap.collection("flags").get();
+  for (const d of snap.docs) {
+    const it = await dbCap.collection(`flags/${d.id}/items`).get();
+    for (const x of it.docs) { const v = x.data(); if (!v || typeof v !== "object" || v.tier === "test") continue; if (!all && !OPEN.includes(v.status)) continue; rows.push({ ...v, cid: d.id, id: x.id }); }
+  }
+  return rows;
+};
+Teacher.refresh = async function () { /* the count on the button and the urgent banner */
   if (!this.is) return;
   if (dbCap) {
     try {
-      const snap = await dbCap.collection("flags").get();
-      let open = 0; const risky = [];
-      for (const d of snap.docs) { const sm = d.data(); if (!sm) continue; open += Number(sm.open) || 0; if (sm.highest === "risk" && sm.open > 0) risky.push(d.id); }
-      let urgent = false;
-      for (const cid of risky) { const it = await dbCap.collection(`flags/${cid}/items`).get(); if (it.docs.some((x) => { const v = x.data(); return v && v.tier === "risk" && v.status === "new"; })) { urgent = true; break; } }
-      this.open = open; this.urgent = urgent;
+      const rows = await this.readAll(false);
+      this.open = rows.length; this.urgent = rows.some((r) => r.tier === "risk" && r.status === "new");
     } catch {}
   }
   updateTeacherBtn(); renderBanners();
 };
+const noteRef = (cid, id) => dbCap.doc(`staffnotes/${cid}__${id}`); /* admin-only: the root rule covers it, and a child's own items never hold these */
+async function noteWrite(cid, id, patch) {
+  let cur = {}; try { const sn = await noteRef(cid, id).get(); if (sn.exists) cur = sn.data() || {}; } catch {}
+  return dbTry(() => noteRef(cid, id).set({ ...cur, ...patch, cid, id }));
+}
 Teacher.load = async function () {
-  const rows = []; this.dsl = { name: "", contact: "" };
-  if (!dbCap) { this.rows = rows; return false; }
+  this.dsl = { name: "", contact: "" };
+  if (!dbCap) { this.rows = []; return false; }
+  let rows;
   try {
-    const snap = await dbCap.collection("flags").get();
-    for (const d of snap.docs) {
-      const sm = d.data(); if (!sm || (!this.showAll && !(sm.open > 0))) continue;
-      const it = await dbCap.collection(`flags/${d.id}/items`).get();
-      for (const x of it.docs) { const v = x.data(); if (!v || typeof v !== "object" || v.tier === "test") continue; if (!this.showAll && !OPEN.includes(v.status)) continue; rows.push({ ...v, cid: d.id, id: x.id }); }
-    }
+    rows = await this.readAll(this.showAll);
     const st = await dbCap.doc("staff/settings").get();
     if (st.exists) { const v = st.data() || {}; this.dsl = { name: strOf(v.dslName, "", 120), contact: strOf(v.dslContact, "", 160) }; }
-  } catch { this.rows = rows; return false; }
+    for (const r of rows) { try { const sn = await noteRef(r.cid, r.id).get(); if (sn.exists) { const v = sn.data() || {}; r.teacherNote = strOf(v.teacherNote, "", 300); r.handledAt = v.handledAt; r.handledBy = v.handledBy; } } catch {} }
+  } catch { this.rows = []; return false; }
   const isOpen = (r) => (OPEN.includes(r.status) ? 0 : 1);
   rows.sort((a, b) => isOpen(a) - isOpen(b) || (b.tier === "risk") - (a.tier === "risk") || (a.status === "new" ? 0 : 1) - (b.status === "new" ? 0 : 1) || (a.createdAt || 0) - (b.createdAt || 0));
   this.rows = rows;
   try { this.names = userCap ? await userCap.profiles([...new Set(rows.map((r) => r.cid))]) : {}; } catch { this.names = {}; }
   return true;
 };
-async function flagAct(r, status, note, extra = {}) { /* a teacher's action: the status, a short note, when, and who */
-  const ok = await dbTry(() => dbCap.doc(`flags/${r.cid}/items/${r.id}`).update({ status, teacherNote: note, handledAt: Date.now(), handledBy: Store.uid, ...extra }));
+/* a teacher's action: the status goes on the child's item (the child's page reads it), and the note, time and teacher go to the admin-only notes */
+async function flagAct(r, status, note, extra = {}) {
+  if (!(await noteWrite(r.cid, r.id, { teacherNote: note, handledAt: Date.now(), handledBy: Store.uid, status }))) return false;
+  const ok = await dbTry(() => dbCap.doc(`flags/${r.cid}/items/${r.id}`).update({ status, ...extra }));
   if (ok) await summarise(r.cid);
   return ok;
 }
 function flagRow(r, onDone) {
-  const nm = (Teacher.names[r.cid]?.name) || "A pupil (name not available)";
+  const nm = pupilLabel(r.cid, Teacher.names, r.createdAt);
+  const dsl = r.tier === "risk" ? el("p", { class: "dslline", "data-dsl": "1", text: `Follow your school’s child protection procedure now and tell the DSL (${Teacher.dsl.name || "not set yet"}). Do not investigate or ask leading questions.${Teacher.dsl.contact ? " Contact: " + Teacher.dsl.contact : ""}` }) : null; /* shown even when the row is closed up */
   const detail = el("div", { class: "flag-detail", hidden: true });
   const row = el("article", { class: "flag-row", "data-flag-id": r.id, "data-tier": r.tier, "data-status": r.status },
     el("div", { class: "flag-head" },
@@ -2801,16 +2898,16 @@ function flagRow(r, onDone) {
       el("span", { class: "statuschip", text: r.status }),
       el("span", { class: "fwho", text: nm }),
       el("span", { class: "label", text: `Ages ${r.age || "unknown"} · ${fmtTime(r.createdAt)} · ${SOURCE_WORD[r.source] || "Source unknown"}` })),
+    dsl,
     el("div", {}, el("button", { class: "btn small ghost", type: "button", "data-act": "open-row", text: "Open", onclick: async (e) => {
       detail.hidden = !detail.hidden; e.currentTarget.textContent = detail.hidden ? "Open" : "Hide";
-      if (!detail.hidden && r.status === "new") { if (await dbTry(() => dbCap.doc(`flags/${r.cid}/items/${r.id}`).update({ status: "seen", seenAt: Date.now(), seenBy: Store.uid }))) { r.status = "seen"; row.dataset.status = "seen"; $(".statuschip", row).textContent = "seen"; if (!Teacher.rows.some((x) => x.tier === "risk" && x.status === "new")) { Teacher.urgent = false; renderBanners(); } await summarise(r.cid); Teacher.refresh(); } }
+      if (!detail.hidden && r.status === "new") { if (await noteWrite(r.cid, r.id, { seenAt: Date.now(), seenBy: Store.uid }) && await dbTry(() => dbCap.doc(`flags/${r.cid}/items/${r.id}`).update({ status: "seen" }))) { r.status = "seen"; row.dataset.status = "seen"; $(".statuschip", row).textContent = "seen"; if (!Teacher.rows.some((x) => x.tier === "risk" && x.status === "new")) { Teacher.urgent = false; renderBanners(); } await summarise(r.cid); Teacher.refresh(); } }
     } })),
     detail);
   detail.append(...[
     el("div", { class: "fq" }, r.question ? el("span", { text: r.question }) : el("em", { text: "The child’s words were not kept, because this alert could not be sent when it happened." })),
     el("p", { class: "label", text: r.reason || "" }),
-    r.failedEarlier ? el("p", { class: "label", text: "This alert was sent late from the child’s tablet." }) : null,
-    r.tier === "risk" ? el("p", { class: "dslline", "data-dsl": "1", text: `Follow your school’s child protection procedure now and tell the DSL (${Teacher.dsl.name || "not set yet"}). Do not investigate or ask leading questions.${Teacher.dsl.contact ? " Contact: " + Teacher.dsl.contact : ""}` }) : null
+    r.failedEarlier ? el("p", { class: "label", text: "This alert was sent late from the child’s tablet." }) : null
   ].filter(Boolean)); /* append turns a null into the text "null" */
   if (r.teacherNote) detail.append(el("p", { class: "label", text: `Note: ${r.teacherNote}` }));
   if (OPEN.includes(r.status)) {
@@ -2850,14 +2947,15 @@ async function renderTeacher(msg = "") {
   /* safety setup: the DSL, and a test alert */
   const dn = el("input", { type: "text", id: "dslName", maxlength: "120", "aria-label": "DSL name", placeholder: "DSL name" }), dc = el("input", { type: "text", id: "dslContact", maxlength: "160", "aria-label": "DSL contact", placeholder: "DSL phone or email" });
   dn.value = Teacher.dsl.name; dc.value = Teacher.dsl.contact;
-  const sMsg = el("p", { class: "status", id: "setupStatus", role: "status" }), works = el("p", { id: "alertsWorking", role: "status", text: Teacher.alertsOk == null ? "" : `Alerts working: ${Teacher.alertsOk ? "yes" : "no"}` });
+  const sMsg = el("p", { class: "status", id: "setupStatus", role: "status" }), works = el("p", { id: "alertsWorking", role: "status", text: Teacher.alertsOk == null ? "" : TEST_WORD[Teacher.alertsOk ? "yes" : "no"] });
   setup.replaceChildren(el("h3", { id: "setupH", text: "Safety setup" }), el("p", { class: "label", text: "Name your school’s DSL. Only teachers can read or change this." }),
     el("div", { class: "row" }, dn, dc),
     el("div", { class: "row" },
       el("button", { class: "btn small teal", type: "button", id: "saveDsl", text: "Save DSL details", onclick: async () => { const ok2 = await dbTry(() => dbCap.doc("staff/settings").set({ dslName: dn.value.trim().slice(0, 120), dslContact: dc.value.trim().slice(0, 160), updatedAt: Date.now(), updatedBy: Store.uid })); if (ok2) { Teacher.dsl = { name: dn.value.trim(), contact: dc.value.trim() }; sMsg.textContent = "Saved."; dslWarn.hidden = !!Teacher.dsl.name; } else sMsg.textContent = "That could not be saved."; } }),
-      el("button", { class: "btn small ghost", type: "button", id: "testAlert", text: "Send a test alert", onclick: async () => { works.textContent = "Testing…"; Teacher.alertsOk = await testAlert(); works.textContent = `Alerts working: ${Teacher.alertsOk ? "yes" : "no"}`; } })),
-    sMsg, works, el("p", { class: "label", text: "A test alert checks that this page can write and read back an alert. It does not appear in the inbox." }));
+      el("button", { class: "btn small ghost", type: "button", id: "testAlert", text: "Send a test alert", onclick: async () => { works.textContent = "Testing…"; Teacher.alertsOk = await testAlert(); works.textContent = TEST_WORD[Teacher.alertsOk ? "yes" : "no"]; } })),
+    sMsg, works, el("p", { class: "label", text: "A test alert writes and reads back a test record from your own account. It does not appear in the inbox." }));
 }
+const TEST_WORD = { yes: "Teacher alerts can be written and read back from this teacher account. This doesn’t prove a child’s account can send one. Check with a test pupil account at Contributor level.", no: "A test alert could not be written and read back from this account. Alerts may not reach teachers. Check the sharing level and the connection, then try again." };
 async function testAlert() { /* write a test flag, read it back, then remove it */
   if (!dbCap || !Store.uid) return false;
   const ref = dbCap.doc(`flags/${Store.uid}/items/test-${Date.now().toString(36)}`);
@@ -2872,7 +2970,7 @@ async function testAlert() { /* write a test flag, read it back, then remove it 
 async function doRelease(book, rel) {
   const st = $("#releaseStatus"); st.textContent = "Releasing…";
   const clean = JSON.parse(JSON.stringify(book)); clean.question = ""; /* no question text goes onto the child's shelf */
-  const ok = await dbTry(() => dbCap.doc(`flags/${rel.cid}/items/${rel.id}`).update({ releasedBook: clean, status: "released", releasedAt: Date.now(), handledAt: Date.now(), handledBy: Store.uid }));
+  const ok = (await noteWrite(rel.cid, rel.id, { handledAt: Date.now(), handledBy: Store.uid, status: "released" })) && (await dbTry(() => dbCap.doc(`flags/${rel.cid}/items/${rel.id}`).update({ releasedBook: clean, status: "released", releasedAt: Date.now() })));
   if (!ok) { st.textContent = "The book could not be released. Check the connection and try again."; return; }
   await summarise(rel.cid); state.question = ""; state.book = null;
   renderTeacher("Released. The book appears on the child’s bookshelf the next time they open the page.");
@@ -2883,7 +2981,7 @@ async function teacherInit() {
   try { Teacher.is = !!(userCap && (await userCap.canEdit())); } catch { Teacher.is = false; }
   if (!Teacher.is) return;
   await Teacher.refresh();
-  clearInterval(Teacher.timer); Teacher.timer = setInterval(() => { if (document.visibilityState === "visible") Teacher.refresh(); }, 60000);
+  clearInterval(Teacher.timer); Teacher.timer = setInterval(() => { if (document.visibilityState === "visible") Teacher.refresh(); }, 120000);
 }
 
 Store.ready = Store.init();
