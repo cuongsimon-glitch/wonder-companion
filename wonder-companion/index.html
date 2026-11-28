@@ -1841,12 +1841,17 @@ function scrub(input) {
   return { text: t, changed: n > 0, count: n };
 }
 
-/* ---------- the local check: a backstop that works with no AI. It would rather catch too much than miss a risk. ---------- */
+/* ---------- the local check: a backstop that works with no AI ----------
+   A wide net with simple rules and NO exemptions. Nothing ever lowers a tier.
+   1. The words are made plain (lower case, contractions opened, repeated letters collapsed) and a token of 4 or more letters is mended to a worry word that is one edit away.
+   2. risk: only a short list of explicit things (a person who hurts, touches, films or undresses the child, telling and secrecy, wanting to die, plain neglect, not being able to breathe).
+   3. sensitive: a PERSON word and a WORRY word anywhere in the same question, or one of the sensitive topics (death, illness, bodies, war, family change, religion, identity).
+   4. safe: everything else. A teacher approves every book anyway, so the net can be wide. */
 const TIER_RANK = { safe: 0, sensitive: 1, risk: 2 };
 const CATEGORIES = ["abuse_or_hurt", "neglect_or_unsafe_home", "self_harm_or_suicide", "online_contact", "death_grief", "illness", "bodies_puberty", "reproduction", "war_violence", "family_change", "religion_belief", "identity", "unclear", "none"];
-/* Text is made plain first: lower case, contractions opened ("dont" and "don't" both become "do not"), child spellings mended, apostrophes and hyphens gone. */
+/* Text is made plain first: lower case, repeated letters collapsed ("sooo" is "so"), contractions opened ("dont" and "don't" both become "do not"), child spellings mended, apostrophes and hyphens gone. */
 function normText(s) {
-  let t = String(s ?? "").toLowerCase().replace(/[’‘`´]/g, "'");
+  let t = String(s ?? "").toLowerCase().replace(/[’‘`´]/g, "'").replace(/([a-z])\1{2,}/g, "$1");
   const fix = [
     [/\b(?:i'm|im)\b/g, "i am"], [/\b(?:i've|ive)\b/g, "i have"], [/\bi'd\b/g, "i would"], [/\bi'll\b/g, "i will"],
     [/\bill (?=(?:get|be|go|tell|never|not|have|take|see|say|run|die|hurt|kill|end|do)\b)/g, "i will "],
@@ -1862,115 +1867,144 @@ function normText(s) {
   for (const [re, to] of fix) t = t.replace(re, to);
   return " " + t.replace(/'s\b/g, "").replace(/'/g, "").replace(/[-–—]/g, " ").replace(/\s+/g, " ").trim() + " ";
 }
-const KINW = "mum|mom|mummy|mommy|mam|mama|mother|dad|daddy|father|papa|stepdad|step dad|stepmum|step mum|stepmom|stepmother|stepfather|nan|nana|nanny|gran|granny|grandma|grandad|grandpa|grandmother|grandfather|uncle|aunt|auntie|aunty|brother|sister|cousin|teacher|coach|tutor|babysitter|childminder|carer|neighbour|neighbor|boyfriend|girlfriend|parent|parents|guardian|stranger|man|lady|woman|adult|adults|grown ups?|older kids?|big kids?|bully|bullies|doctor|priest|vicar|driver|police|friend|mate|classmate|he|she|they";
-const KINS = `(?:${KINW})s?`;
-const KINF = KINW.replace("|doctor|priest|vicar|driver|police", "").replace("|they", ""); /* people a child can be frightened of, without the doctor or the bus driver */
-const HUMANW = /\b(?:mum|mom|mummy|mommy|mam|mama|mother|dad|daddy|father|papa|stepdad|stepmum|nan|nana|nanny|gran|granny|grandma|grandad|grandpa|uncle|aunt|auntie|aunty|brother|sister|cousin|teacher|coach|babysitter|carer|parent|parents|stranger|man|lady|woman|adult|adults|grown ups?|people|person|kid|kids|boy|boys|girl|girls|bully|bullies|friend|mate|classmate|someone|somebody)\b/;
-/* a person, or something that stands for one, at the end of a harm verb */
-const T_PRON = "me|us|him|her|them|myself|ourselves|mum|mom|mummy|mommy|dad|daddy|nan|nanny|nana|gran|granny|grandma|grandad|grandpa|brother|sister|baby|cousin|my (?:mum|mom|mummy|dad|daddy|brother|sister|baby|nan|nanny|friend|friends|cousin|family)";
-const T_ANY = `${T_PRON}|(?:my|our|his|her|their) \\w+`;
-const BODY = "(?:body|private \\w+|bum|bottom|chest|tummy|belly|legs?|thighs?|hair|arm|arms|neck|breasts?|boobs|privates)";
-const STRONG_V = "hit|hits|hitting|hurt|hurts|hurting|kick|kicks|kicking|punch|punches|punching|beat|beats|beating|slap|slaps|slapping|smack|smacks|smacking|belt|belts|belted|whip|whips|whipped|spank|spanks|spanked|choke|chokes|choked|choking|strangle|strangles|strangled|strangling|smother|smothers|smothered|smothering|suffocate|suffocates|suffocating|stab|stabs|stabbed|starve|starves|starving|bully|bullies|bullied|bullying|abuse|abuses|abused|abusing|hurted";
-const WEAK_V = "push|pushes|pushed|pushing|shove|shoves|shoved|shoving|pull|pulls|pulled|throw|throws|threw|drag|drags|dragged|grab|grabs|grabbed|grabbing|shake|shakes|shook|pinch|pinches|pinched|squeeze|squeezes|spit on|spits on|slam|slams|burn|burns|burnt|burned|bite|bites|bitten|scare|scares|scared|frighten|frightens|threaten|threatens|threatened|kill|kills|lock|locks|locked|tie|ties|tied|touch|touches|touched|touching|kiss|kisses|kissed|tickle|tickles";
-const HARM_STRONG = new RegExp(`\\b(?:${STRONG_V})\\b(?: (?:at|on|in|to|up|out|over|around|off|down|with))?(?: \\w+){0,2}? (?:${T_ANY})\\b`, "g");
-const HARM_WEAK = new RegExp(`\\b(?:${WEAK_V})\\b(?: (?:at|on|in|to|up|out|over|around|off|down|with))?(?: \\w+){0,2}? (?:${T_PRON}|my ${BODY})\\b`, "g");
-const HARM_SHOUT = new RegExp(`\\b(?:shout|shouts|shouted|shouting|yell|yells|yelled|yelling|scream|screams|screamed|screaming|swear|swears|swore|swearing|growl|growls)\\b(?: at| to)? (?:${T_PRON})\\b`, "g");
-const HARM_BREAK = /\b(?:broke|breaks|breaking|snapped|cracked|twisted)\b(?: \w+){0,2}? (?:arm|leg|nose|finger|fingers|tooth|teeth|wrist|rib|ribs|bone|bones|jaw|skull|neck)\b/g;
-const HARM_BIT = new RegExp(`\\b(?:bit|bitten) (?:me|us|him|her|them|my \\w+)\\b`, "g");
-const HARM_PASSIVE = /\b(?:i|we|he|she|they|me|us|my \w+) (?:am|is|are|was|were|get|gets|got|getting|being|keep getting|always get|always getting|have been|has been|had been)(?: being| always| often| sometimes| really| badly)? (?:hit|hurt|kicked|punched|beaten|slapped|smacked|shoved|pushed|bullied|touched|grabbed|bitten|burned|burnt|shouted at|screamed at|yelled at|starved|threatened|spanked|whipped|choked|abused|belted|dragged|thrown)\b/;
-const COERCE = /\b(?:make|makes|made|making|force|forces|forced|forcing)\s+(?:me|us|him|her|them)\s+(?:to )?(?:do (?:things|stuff|something|what)|touch|show|take off|undress|strip(?:\s+(?:off|down|naked))?\b(?!\s+(?:the|a|paint|wallpaper|my bed|bed|beds|sheets))|kiss|steal|lie|smoke|kneel|pose|sit on (?:his|her|their|my) (?:lap|knee|knees)|sleep with|get in (?:bed|the bath|the shower))\b/;
-const NONHUMAN = /\b(?:ball|balls|stone|rock|branch|door|wave|waves|wind|swing|bat|bee|bees|wasp|wasps|dog|dogs|cat|cats|puppy|kitten|horse|cow|goat|goose|geese|bird|spider|snake|fish|crab|insect|bug|mosquito|tree|car|bike|bus|train|plane|pain|tummy|belly|stomach|head|knee|knees|leg|arm|tooth|teeth|eye|eyes|ear|ears|throat|back|foot|feet|hand|hands|chest|neck|heart|finger|fingers|toe|toes|skin|hamster|rabbit|animal|ant|ants|ghost|monster|dragon|lion|tiger|shark|bear|wolf|fox)\b/;
-const PERSONISH = new RegExp(`\\b(?:i|me|my|mine|we|us|our|ourselves|${KINW}|someone|somebody|everyone|stranger)s?\\b`);
-/* a hit, hurt, shout, touch or force aimed at the child or someone they know is risk, whoever does it: "Jake", "Daddy", "my coach", a name, a noun. */
-function harmCheck(sentence) {
-  let soft = false;
-  for (const re of [HARM_STRONG, HARM_WEAK, HARM_SHOUT, HARM_BIT, HARM_BREAK]) {
-    re.lastIndex = 0; let m;
-    while ((m = re.exec(sentence))) {
-      const before = sentence.slice(0, m.index).trim().split(" ").filter(Boolean).slice(-3), prev = before[before.length - 1] || "";
-      const thing = /^(?:it|this|that|which|what|everything|something|nothing)$/.test(prev) || (before.some((w) => NONHUMAN.test(w.replace(/s$/, ""))) && !before.some((w) => HUMANW.test(w))); /* the one doing it is a thing or an animal */
-      const mine = before.slice(-2).includes("i") && /^(?:broke|snapped|cracked|twisted|hit|hits|hitting|hurt|hurts|hurting|kick|kicks|kicking|punch|punches|punching|push|pushes|pushed|shove|shoved|bite|bites|grab|grabbed|pinch|pinched|throw|threw|bully|bullies|scare|scares|shake|shook|slap|slapped|squeeze|squeezes|tickle|tickles|pull|pulled|kiss|kissed|touch|touches|touched)\b/.test(m[0]); /* the child doing it, not having it done to them */
-      const kind = /^(?:kiss|kisses|kissed|tickle|tickles|tickled)\b/.test(m[0]) && /\b(?:mum|mom|mummy|mommy|mam|mama|dad|daddy|papa|nan|nanny|nana|gran|granny|grandma|grandad|grandpa|mother|father)$/.test(before.join(" ")) && !/\b(?:friend|boyfriend|girlfriend|partner|step ?\w+)$/.test(before.join(" ")) && !/\b(?:stop|not like|uncomfortable|secret|private|lips|mouth|bed|naked|do not want|hurt|hurts|yucky|icky|funny feeling|tongue|where|bum|bottom|body)\b/.test(sentence); /* a parent's kiss goodnight or tickle: a teacher is told, but it is not urgent. It is never "safe". */
-      const hair = /^(?:touch|touches|touched|touching)\b/.test(m[0]) && /\bmy (?:hair|arm|arms|neck|forehead|head|face|hand|hands)$/.test(m[0]); /* a touch on the hair or arm: sensitive, not urgent */
-      const ownArm = /^(?:broke|breaks|breaking|snapped|cracked|twisted)\b/.test(m[0]) && (/\b(?:his|their)\b/.test(m[0]) || (/\bher\b/.test(m[0]) && /^(?:she|mum|mom|mummy|mommy|sister|nan|nanny|nana|gran|granny|grandma|aunt|auntie|aunty|girl|lady|woman|friend)$/.test(prev))); /* "he broke his arm" */
-      const aftr = sentence.slice(m.index + m[0].length), ride = /^\s*(?:on|in|into|onto|up|down|along|around|across|over)?\s*(?:the |a |my |his |her |our )?(?:swing|swings|roundabout|trolley|pram|buggy|wheelchair|bike|scooter|seesaw|slide|sledge|boat|go kart|cart)\b/.test(aftr); /* pushed me on the swing */
-      const bef5 = sentence.slice(0, m.index).trim().split(" ").filter(Boolean).slice(-5), ii = bef5.lastIndexOf("i"), selfHurt = ii >= 0 && /^(?:hurt|hit|cut|bang|banged|bump|bumped|knock|knocked|bit|burn|burnt|burned|scratch|scratched|twist|twisted|break|broke|pinch|pinched|trap|trapped)\b/.test(m[0]) && bef5.slice(ii + 1).every((w) => !PERSONISH.test(w)); /* "I fell and hurt my knee" */
-      const generic = /\byou\b/.test(sentence) && !PERSONISH.test(sentence); /* "when you hit them": a general question, nobody in it */
-      if (thing || mine || kind || hair || ownArm || generic || ride || selfHurt) { soft = true; continue; }
-      return "risk";
-    }
-  }
-  return soft ? "sensitive" : null;
+
+/* ----- PERSON words: whole words only ("is" is never one) ----- */
+const SELF_W = new Set("i me my myself mine we us our ourselves you your yours yourself".split(" "));
+const PERSON_W = new Set((Array.from(SELF_W).join(" ") + " he him his himself she her herself they them their themselves someone somebody anyone anybody nobody everyone everybody people person man men woman women lady ladies boy boys girl girls kid kids child children baby babies " +
+  "mum mummy mommy mom mam mama mother dad daddy father papa pa stepdad stepmum stepmom stepmother stepfather stepbrother stepsister step brother sister nan nana nanny nanna gran granny grandma grandmother grandad granddad grandpa grandfather grandparent grandparents grandson granddaughter parent parents guardian uncle aunt aunty auntie cousin nephew niece " +
+  "teacher coach tutor babysitter childminder carer neighbour neighbor boyfriend girlfriend partner stranger bully bullies friend mate classmate doctor dentist nurse priest vicar driver adult adults grownup grownups family relative relatives twin twins sibling siblings headteacher").split(" "));
+const isPerson = (w) => PERSON_W.has(w) || (w.length >= 4 && w.endsWith("s") && PERSON_W.has(w.slice(0, -1))); /* "mummys", "dads" */
+const OTHER_NOUNS = "mum|mummy|mommy|mom|mam|mama|mother|dad|daddy|father|papa|stepdad|stepmum|stepmom|stepmother|stepfather|brother|sister|nan|nana|nanny|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|uncle|aunt|aunty|auntie|cousin|teacher|coach|babysitter|friend|mate|baby|boy|girl|kid|child|man|woman|lady";
+
+/* ----- WORRY words, by kind. A base word is given every ending it can have. ----- */
+const inflect = (w) => { const o = [w, w + "s", w + "es", w + "ed", w + "d", w + "ing", w + w.slice(-1) + "ing", w + w.slice(-1) + "ed"]; if (w.endsWith("e")) o.push(w.slice(0, -1) + "ing"); if (w.endsWith("y")) o.push(w.slice(0, -1) + "ies", w.slice(0, -1) + "ied"); return o; };
+const WORRY_BASE = {
+  harm: "hurt hit beat slap smack punch kick bite choke strangle smother suffocate stab bruise bleed abuse bully threaten kill murder die drown starve whip spank injure attack",
+  harmx: "bitten beaten dead death dying died hurting bleeding bleeds bled bit hits hitting kicking punching hurts strangled beaten bruised bruises stabbed killed killing murdered burnt choking smothering pain painful wound wounded weapon knife gun",
+  body: "touch kiss tickle naked nude private privates undress undressed undressing strip stripped lap laps bath baths bathing shower showers film films filmed filming video videos videoed dressed changing",
+  secret: "secret secrets secretly punish punishment punished punishing police threat threats blackmail blackmailed",
+  neglect: "hungry hunger starving starved alone locked dirty freezing cold outside floor blanket blankets",
+  fear: "scared afraid frightened terrified petrified fear scream screams screaming screamed shout shouts shouting shouted yell yells yelling yelled cry cries crying cried hide hides hiding hid temper tempers angry anger furious rage",
+  substance: "drunk drinks drank drinking beer wine alcohol vodka drugs drug pills pill tablets medicine medication sleepy dizzy",
+  self: "gone disappear disappears disappeared vanish vanished exist exists existing alive breathe breathing worthless stupid lonely useless ugly burden suicide",
+  online: "online message messages meet meets meeting address addresses"
+};
+const WORRY_KIND = new Map();
+for (const [kind, list] of Object.entries(WORRY_BASE)) for (const b of list.split(" ")) for (const f of (kind === "harmx" || kind === "self" || kind === "online" ? [b] : inflect(b))) if (!WORRY_KIND.has(f)) WORRY_KIND.set(f, kind === "harmx" ? "harm" : kind);
+/* ordinary words that sit one edit away from a worry word. They are never "mended" into one. */
+const NOT_MENDED = new Set("aided alike along angel angle around attached attaches baked bakes beard bears beater beeped bells belly belted belts bikes bills blend block blocked boats booked books bound bounded breath brown bunch buried burns burst buses bushes bytes caked cakes cares cells chips chore chores chose claps clock clocks clone codes cooked cooks couch could cream crown cruise cubes curious danger deaths diving docks doing downs dragged drags drawn draws dread dried dries drink drums eaten exits faked fakes fared files fillings fills finds fizzy flaps flood found fried fries frown grades grass ground grown hates heard heating hidden hills hints holding holds injury inline kites kitten lakes licks lines looked looking looks lovely lunch makes meets mills missed misses missing mites mound munch named nudges olive pages paging paint paths picked picks pinch pinched pinches plain policy polite pound pressed pulled pulls raked rakes range rates rocks round scabs scale scales scare scares scarf scarves scolded scores scoring scout sells shake shape shapes share shared sharing shave sheet ships shirt shoot shooting shoots shore short shorts shots should shouts showed showing shuts sides sites skill skills slabs sleep sleeping sleeps slipped slips small smell smile snack snacks snapped socks sound spain spans spell stack stage stages stand stare stares starring stars start started starting state stated states stayed staying stays steps stick still stone store story stove strange strapped stream stripe striped stripes stripper stripy study stuff swapped sweet table tables tablet tablets takes tamper tapped tapping telling tells temple thread throat tills torch tough treat treated treats tried tries trip tripped trips trunk trying turning turns wakes water weapons weather wells wings words works world worth would wound years".split(" "));
+/* every worry word long enough to mend, grouped by length, for the edit-distance-1 match */
+const MEND = new Map();
+for (const w of WORRY_KIND.keys()) if (w.length >= 4) { const k = w.length; if (!MEND.has(k)) MEND.set(k, []); MEND.get(k).push(w); }
+function oneEdit(a, b) { /* true when a and b are one insertion, deletion, substitution or swap of neighbours apart */
+  const la = a.length, lb = b.length; if (Math.abs(la - lb) > 1) return false;
+  let i = 0; while (i < la && i < lb && a[i] === b[i]) i++;
+  if (i === la && i === lb) return false;
+  if (la === lb) { if (a.slice(i + 1) === b.slice(i + 1)) return true; return i + 1 < la && a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2); }
+  return la > lb ? a.slice(i + 1) === b.slice(i) : b.slice(i + 1) === a.slice(i);
 }
-const FIRST = /\b(?:me|my|us|our|i|we|you|your)\b/;
-const PEOPLE = new RegExp(`\\b(?:${KINW}|someone|somebody|people|person|boys?|girls?|older \\w+|big \\w+|men|women)s?\\b`);
-const PICT = /\b(?:photos?|pictures?|pics?|videos?|films?|filming|filmed|selfies?|webcam|recording|recorded|camera|snaps?)\b/;
-const UNDRESS = /\b(?:clothes off|(?:take|takes|took|taking|get|gets|got|getting|pull|pulls|pulled|pulling|put|puts) (?:my |your |all |his |her |their |our |the |off |down )*(?:clothes|top|shirt|pants|trousers|knickers|underwear|pyjamas|jumper|dress|shorts|bra|vest) (?:off|down)|(?:take|takes|took|taking|get|gets|got|getting|pull|pulls|pulled|pulling) off (?:my |your |all |his |her |their |our |the )*(?:clothes|top|shirt|pants|trousers|knickers|underwear|pyjamas|jumper|dress|shorts|bra|vest)|undress\w*|naked|nude|no (?:clothes|top|shirt|pants|trousers|knickers|underwear|bra|vest)|(?:top|shirt|pants|trousers|knickers|underwear|bra|vest|clothes) off|without (?:any |my )?clothes|(?:pants|knickers|trousers) down|in (?:my|our) (?:pants|underwear|knickers|pyjamas)|strip(?:ped|s)? (?:me|us|off|down|naked))\b/;
-const BODYPIC = /\b(?:me|us)\b[^.?!]{0,15}\b(?:in the (?:bath|shower|toilet|bathroom)|getting (?:changed|undressed)|naked|nude|undressed|with no clothes|in my (?:pants|underwear|knickers))\b|\b(?:of me|of us|of my (?:body|bum|bottom|private\w*|tummy|chest|legs|bits|parts))\b[^.?!]{0,12}\b(?:getting (?:changed|undressed|dressed)|changing|undressing|having a (?:bath|shower)|in the (?:bath|shower|toilet|bathroom|bed|bedroom)|in my (?:bed|bath|room|pants|underwear)|naked|nude|undressed|without|with no|no clothes)\b|\b(?:of|show|shows|showed|showing) my (?:body|bum|bottom|private\w*|privates|chest|bits|parts)\b|\bmy (?:body|bum|bottom|private parts|privates|chest) (?:on|for|to) (?:the |a )?(?:camera|photo|video|picture|phone|webcam)\b|\bof me in the (?:bath|shower|toilet|bathroom|bed)\b/;
-const ASKING = /\b(?:make|makes|made|making|force\w*|ask|asks|asked|asking|tell|tells|told|want|wants|wanted|let|lets|try|tries|tried|trying|keeps? asking|say|says|said)\s+(?:me|us|you)\b/; /* aimed at the child */
-const TELLV = /\b(?:tell|tells|told|telling|snitch\w*|grass\w*|report(?:ed|ing)?|open my mouth|let (?:anyone|anybody|someone|somebody|mum|dad) know|find out|found out|say (?:anything|something|a word|what)|said (?:anything|something|a word|what)|talk(?:ed|ing)? (?:to|about)|speak(?:ing)? (?:to|up|out|about)|spoke (?:to|up|out|about))\b/;
-const CONSEQ = /\b(?:punish\w*|(?:get|got|gets|getting|will get|would get|be|am|was|will be|would be) (?:\w+ )?(?:hurt|hit|beaten)|hurt (?:me|us)|hit (?:me|us)|beat (?:me|us)|beating|killed|kill (?:me|us|you)|(?:smack|slap|belt|whip)\w*|a hiding|in (?:big |a lot of |lots of |serious )?trouble|sent away|sent (?:to|into) (?:a )?(?:home|care|foster)|send me (?:to|into) (?:a )?(?:home|care|foster)|send me away|taken away|take me away|put in care|taken into care|shouted at|screamed at|something bad|bad things?|something terrible|never see|blamed|not believe|(?:nobody|no one) (?:would|will|is going to|is ever going to) (?:believe|listen)|called a liar|starve\w*)\b/;
-const NOTTELL = /\b(?:(?:not allowed|not supposed|forbidden|must not|have been told not|told not|told me not|told us not|stops? me from|stopped me from|am not able)\s+(?:to )?(?:tell|tells|say anything|say a word|say what|(?:talk|speak) about (?:it|this|that|what|him|her|them)|let (?:anyone|anybody|someone|somebody) know)\b|(?:can not|am not allowed to|are not allowed to)\s+tell\s+(?:anyone|anybody|any one|someone|somebody|no one|nobody|(?:my )?(?:mum|mom|dad|teacher|nan|gran|parents)|what (?:happened|happens|he|she|they|goes on|went on|is going on))\b)/;
-const NEEDS = "eat|eating|food|dinner|breakfast|lunch|tea|supper|meals?|snacks?|a drink|any drink|drink(?:ing)? (?:of )?(?:any )?(?:water|milk)|water|milk|wash|washing|bath|shower|toilet|loo|bathroom|pee|wee|poo|medicine|medication|tablets|inhaler|heating|blankets?|coat|warm";
-const FEAR = /\b(?:hide|hiding|hid|scared|afraid|frightened|terrified|petrified|fear|fearful|panic|panicking|scary|scares?|scaring)\b/;
-const TEMPER = /\b(?:temper|tempers|anger|moods?|shouting|shouts|yelling|yells|screaming|screams|rage|raging|furious|(?:gets|get|is|are|so|always|very|really) angry|(?:is|are) (?:always|so|very|really) (?:cross|mad))\b/;
-/* withheld care, each pattern aimed at the child and at a real need: a meal, water, sleep, washing, the toilet, a way in. Sweets, a fizzy drink or a sleepover do not count. */
-const TREAT = "sweets?|chocolate|crisps|biscuits|cake|candy|ice|pudding|dessert|snacks?|junk|sugar|cookies?|treats?|fizzy|coffee|over|late|later|until|till|with|on the sofa";
-const PLACE = "at school|in class|in the|before|after|during|near|inside|outside|here|there|when";
-const NEEDW = "eat|eating|food|dinner|breakfast|lunch|tea|supper|meals?|a drink|any drink|drink(?:ing)?(?=\\s*$)|drink(?:ing)? (?:of )?(?:any )?(?:water|milk)|water|milk|wash|washing|bath|shower|toilet|loo|bathroom|pee|wee|poo|medicine|medication|tablets|inhaler|sleep|sleeping|go to bed|go to sleep";
-const SKIPW = "(?:(?:go|to|use|have|take|get|any|a|an|the|my|some|enough)\\s+){0,3}?";
-const CARE = [
-  new RegExp(`\\b(?:will not|would not|does not|do not|did not|can not|never|refuses? to|refused to|not allowed to|not going to|stops? me|stopped me)\\s+(?:let|lets|letting|allow|allows|give|gives|feed|feeds|get|gets|have|has|stop|stops)\\s+(?:me|us|him|her|them)\\s+(?:to\\s+)?${SKIPW}(?:${NEEDW})\\b(?!\\s+(?:${TREAT}))`),
-  new RegExp(`\\b(?:not allowed|never allowed|not permitted|banned from|forbidden|not supposed)\\s+(?:to\\s+)?(?:(?:any|a|my|some|the)\\s+)?(?:${NEEDW})\\b(?!\\s+(?:${TREAT}|${PLACE}))`),
-  new RegExp(`\\b(?:can not|not allowed to|never)\\s+(?:i |we )?(?:have|get|take|go)\\s+(?:to |a |any |my |some |the )?(?:\\w+ )?(?:${NEEDW})\\b[^.?!]{0,12}\\b(?:for|all|every|until|the whole)\\s+(?:a |two |three |four |five |\\d+ |the |next )?(?:week|weeks|day|days|night|nights|weekend)\\b`),
-  new RegExp(`\\b(?:will not|would not|does not|do not|did not|can not)\\s+(?:let|lets|allow|allows)\\s+(?:me|us)\\s+(?:back )?(?:in|inside)(?:\\s+(?:the|our|my)\\s+(?:house|home|flat)|\\s+(?:when|after|until|at night|all)\\b|\\s*$)`),
-  new RegExp(`\\b(?:keeps?|kept|keeping|puts?|put|putting|shuts?|shut)\\s+(?:me|us)\\s+(?:in|inside)\\s+(?:a |the |my )?(?:cupboard|closet|wardrobe|cellar|shed|attic|garage|basement|box|loft|dark)\\b`),
-  new RegExp(`\\b(?:i|we) (?:get|got|have|had|am given|was given|are given)\\s+(?:no|nothing|not any|hardly any)\\s+(?:\\w+\\s+)?(?:food|dinner|breakfast|lunch|meals?)\\b`),
-  new RegExp(`\\b(?:i|we) (?:was|were|am|are|have been|had been|get|got) (?:not|never) (?:given|fed|allowed)\\s+(?:(?:any|a|my|some|the|enough|to|go|use|have|eat|get)\\s+){0,4}?(?:${NEEDW})\\b(?!\\s+(?:${TREAT}))`),
-  new RegExp(`\\b(?:takes?|took|taking)\\s+(?:away\\s+)?(?:my|our)\\s+(?:dinner|food|breakfast|lunch|supper|meal|meals|bed|blankets?|coat|medicine)\\b`),
-  new RegExp(`\\b(?:nobody|no one|noone)\\s+(?:lets?|allows?|gives?|washes|bathes|cares for|cares about|wakes|takes)\\s+(?:me|us)\\b`),
-  new RegExp(`\\b(?:make|makes|made|making|force|forces|forced|let|lets)\\s+(?:me|us)\\s+(?:to )?(?:sleep|stay|wait|stand|sit|kneel|live)\\s+(?:in|on|outside|out|under)\\b[^.?!]{0,12}\\b(?:garden|floor|stairs|cupboard|cellar|shed|garage|attic|corridor|hall|hallway|yard|street|car|cold|dark|outside)\\b`),
-  new RegExp(`\\b(?:make|makes|made|making|force|forces|forced)\\s+(?:me|us)\\s+go without\\b|\\b(?:i|we) (?:often |always |sometimes |have to |had to )?go without (?:food|dinner|breakfast|lunch|a meal|meals|eating) (?:for|all|every)\\b`),
-  new RegExp(`\\b(?:${KINS}|he|she|they|someone|somebody)\\s+(?:\\w+\\s+){0,2}?keeps?\\s+(?:me|us)\\s+(?:up|awake)\\b[^.?!]{0,20}\\b(?:all night|every night|all day|for hours|for days|until morning|till morning)\\b(?![^.?!]{0,30}\\b(?:snor\\w*|cough\\w*|cry\\w*|noise|noisy|barking|music|tv|telly|thunder|storm|baby|games?|talking)\\b)`),
-  new RegExp(`\\b(?:i|we) (?:am|was|were|get|got|keep getting|always get|have been)\\s+(?:locked|shut)\\s+(?:in|inside)\\s+(?:my|the|a)\\s+(?:room|bedroom|cupboard|bathroom|shed|cellar|garage|attic|loft)\\b|\\blocked (?:out|outside)\\b[^.?!]{0,25}\\b(?:all night|overnight|for hours|in the cold|in the rain|at night|for days)\\b`),
-  /* no bed, no blanket: a child made to sleep on the floor or outside */
-  new RegExp(`\\b(?:have to|had to|has to|must|made to|makes? me|forced to|always|every night|every day|never allowed|no bed|nowhere else)\\b[^.?!]{0,25}\\b(?:sleep|sleeps|sleeping|slept)\\s+(?:on the (?:floor|stairs|hall|cold floor|ground)|outside|in the (?:garden|car|shed|garage|cupboard|hall)|in a cupboard)\\b|\\b(?:sleep|sleeps|sleeping|slept)\\b[^.?!]{0,40}\\b(?:no|without) (?:a )?(?:blankets?|duvet|pillow|mattress|covers?)\\b`)
-];
-const RULES = [
-  { tier: "risk", cat: "abuse_or_hurt", reason: "The child may be being hit, hurt, frightened or shouted at, or may know someone who is.", test: (t, ss) => ss.some((s) => harmCheck(s) === "risk") || HARM_PASSIVE.test(t) },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "The child may be made to do things they do not want to do.", re: COERCE },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "Bruises or marks that may come from a person.", re: new RegExp(`\\b(?:bruise|bruises|bruised|black eye|welts?|scars?|marks|bleeding|cuts)\\b[^.?!]{0,40}\\b(?:from|by|because of|caused by)\\b[^.?!]{0,20}\\b${KINS}\\b|\\b${KINS} (?:leaves?|left|gives?|gave|makes?|made) (?:me )?(?:bruises?|marks|scars?|a black eye)`) },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "Private parts shown or asked for.", re: /\b(?:shows?|showed|showing|asks? me to show|asked me to show|wants? me to show)\b[^.?!]{0,20}\b(?:willy|penis|vagina|private \w+|privates|bum|bottom|body|boobs|breasts)\b/ },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "A private or rude picture or video, or a touch, that goes with a secret.", re: /\b(?:shows?|showed|showing|sends?|sent|makes? me watch|made me watch|lets? me watch|wants? me to (?:look|watch)\w*|asks? me for|asked me for)\b[^.?!]{0,15}\b(?:rude|naughty|dirty|private|nude|naked|sexy|porn\w*|adult|inappropriate|bad)\b|\b(?:rude|naughty|dirty|nude|naked|porn\w*|sexy|inappropriate) (?:videos?|pictures?|photos?|pics?|films?|clips?|messages?|texts?)\b|\b(?:send|sent|take|took|taking) (?:a |some )?(?:nude|naked|private|rude) (?:pictures?|photos?|pics?|selfies?|videos?)\b|\b(?:touch\w*|kiss\w*|undress\w*|naked|nude|private (?:parts|bits)|privates)\b[^.?!]{0,60}\b(?:secret|do not tell|not tell|do not like|does not like|uncomfortable|yucky|icky|funny feeling)\b|\bsecret\b[^.?!]{0,60}\b(?:touch\w*|kiss\w*|undress\w*|naked|nude|private (?:parts|bits)|privates)\b|\b(?:abuse|abused|abusing|molest\w*|rape|raped|assault\w*|trafficking|groom\w*)\b/ },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "A secret, or being told not to tell, around an adult, stranger or older child.", test: (t) => /\b(?:(?:do not|must not|will not|can not|did not) tell (?:anyone|anybody|any one|mum|mom|dad|your|nobody|no one|the teacher|a soul)|not to tell|told me not to|promise(?:d)? (?:not to tell|i would not tell)|keep (?:it|this|that) (?:quiet|a secret|secret)|keep quiet about|our (?:little )?secret|(?:keep|stay|is|just|be|this is|it is) (?:just )?between us|(?:told|tells|said|says) (?:me )?(?:not to|to not|do not) (?:say|tell) (?:anything|anyone|nobody|no one)|do not say anything (?:to|about))\b/.test(t) || new RegExp(`\\b(?:${KINS}|boy|boys|girl|girls|kid|kids|older \\w+|someone|somebody|grown ups?|adults?|they|people|person)\\b[^.?!]{0,25}\\b(?:says?|said|tells?|told|asks?|asked|wants?|wanted|makes?|made|gave|gives|keeps?|kept|lets?)\\b[^.?!]{0,35}\\bsecrets?\\b|\\bsecrets?\\b[^.?!]{0,12}\\b(?:from|with) (?:my |your )?(?:mum|mom|dad|parents|teacher|everyone|anyone|nan|gran)\\b`).test(t) },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "The child is told something bad will happen if they tell.", re: /\b(?:if|when) (?:i|we) (?:tell|told|say|said|talk|talked|speak|spoke|ask|asked|go to|call|ring)\b[^.?!]{0,50}\b(?:taken away|take me away|put in care|put into care|sent away|send me away|in trouble|be hit|hit me|hurt me|punish\w*|never see|kill|jail|angry)\b|\b(?:taken away|take me away|put in care|sent away|send me away)\b[^.?!]{0,30}\b(?:if|when) (?:i|we) (?:tell|told|say|said|talk|speak|ask)\b|\b(?:threaten\w*|says? (?:i|we) will|said (?:i|we) would)\b[^.?!]{0,40}\b(?:if (?:i|we) tell|taken away|put in care)\b/ },
-  { tier: "risk", cat: "self_harm_or_suicide", reason: "The words may mean the child wants to hurt themselves, to die, or not to be here.", re: /\b(?:hurt|harm|kill|cut|hit|punish|starve|hate|burn|bite|scratch|slap|pinch|choke|bang)\w*\s+(?:my ?self|myself|my own)\b|\b(?:want|wants|wanted|wish|wished|hope|hoped|going|thinking of|think about|thought about|planning)\s+(?:to\s+|i\s+(?:was|were|could|did|would|had)\s+)?(?:die|be dead|dead|disappear|vanish|end it|end it all|not be here|not be alive|not exist|go away forever|never been born|never born|not been born|not born|stop living|stop breathing|kill myself|jump|sleep forever|not wake up|never wake up|not wake)\b|\b(?:do not|did not|would not|will not) (?:want|wanna) (?:to )?(?:be here|live|be alive|exist|go on|be around|be me|stay here|wake up|be at home)\b|\b(?:want|wants|wanted|wish|wished) (?:i|to) (?:was|were|am|be) (?:not|never) (?:here|alive|born|around|me)\b|\b(?:wish|want|hope|wanted|could|if only)\b[^.?!]{0,30}\b(?:not wake up|never wake up|not wake|sleep forever)\b|\b(?:do not|did not) like (?:being alive|being here|living|my life|being me|myself)\b|\b(?:hate|hated) (?:being alive|my life|living|being here)\b|\bsuicid\w*|\bself ?harm\w*|\bend my (?:own )?(?:life|it all)\b|\btake my (?:own )?life\b|\b(?:better|happier|world better) (?:off )?without me\b|\bno ?one would (?:miss|care|notice)\b|\bi am a burden\b|\bwish i (?:was|were|had) (?:dead|gone|not here|never born|not born|never been born|invisible)\b|\bhow (?:do|can|could|would) i (?:die|kill myself|disappear|end it|hurt myself|stop breathing)\b|\bhate myself\b|\bwhy (?:do|am) i (?:want|wanting) to (?:die|disappear|hurt|be dead)|\b(?:i|me)\b[^.?!]{0,30}\b(?:disappear|vanish)\b|\b(?:disappear|vanish)\b[^.?!]{0,20}\b(?:forever|for good)\b/ },
-  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The words suggest the child may be neglected, left alone, not fed, or caring for a carer who is unwell or drunk.", re: new RegExp(`\\b(?:nobody|no one|noone)\\b[^.?!]{0,30}\\b(?:feeds?|looks? after|takes? care|cooks?|makes? (?:me )?(?:food|dinner|tea|breakfast)|picks?|picked|collects?|collected|walks?|puts? me to bed|checks? on|is (?:at )?home|is there|comes?|came|turns? up|shows? up|is coming|helps? me|buys?|gets? me|get me|fetch\\w*|knows where i am)\\b|\\b(?:left|leaves|leaving|leave|locks?|locked|shuts?|shut)\\b[^.?!]{0,25}?\\b(?:me|us|my|our)\\b[^.?!]{0,30}?\\b(?:alone|on (?:my|our) own|by (?:myself|ourselves)|all night|all day|all weekend|overnight|for days|home alone)\\b|\\b(?:left|leaves|leaving|leave|locks?|locked|shuts?|shut)\\s+(?:me|us|him|her|them)\\s+(?:home|in|out|outside)\\b|\\bhome alone\\b(?=[^.?!]{0,30}\\b(?:all night|every|overnight|days|nights|again|always|a lot|all the time|all day|at night|all weekend)\\b)|\\b(?:alone|on my own|by myself)\\s+(?:at home |in the house )?(?:all|every|the whole|at night|overnight|for (?:days|nights|hours|ages|weeks|a long time|the whole))\\b|\\b(?:sleep|sleeps|slept|stay|stays|am|is|are|live|lives) (?:here |there |at home )?(?:alone|on my own|by myself)\\b[^.?!]{0,40}\\b(?:nobody|no one|night|mum|dad|home)\\b|\\b(?:do not|does not|never|can not|will not|did not)(?: i| we| you)? (?:get|have|eat|find|feed|give)\\b[^.?!]{0,12}\\b(?:food|dinner|breakfast|lunch|tea|to eat|anything to eat|enough to eat)\\b|\\bnothing to eat\\b|\\b(?:i|we) (?:have|had|has) not (?:eaten|had (?:anything|any food|dinner|lunch|breakfast))\\b|\\b(?:i|we) (?:did not|do not|could not|can not) eat (?:anything )?(?:today|yesterday|all day|for)\\b|\\b(?:i|we) (?:have to |always |must |had to )?(?:look|looks|looking|looked|take|taking|took) (?:care )?(?:of|after) (?:my|our) (?:little |baby |younger )?(?:brother|sister|siblings?|baby|mum|mom|dad)(?= by myself| alone| on my own| because| all | every | when | while )|\\b${KINS}\\b[^.?!]{0,15}\\b(?:never|hardly ever|rarely) (?:in|home|there|around|here|at home)\\b|\\b(?:no|not enough) (?:food|dinner|breakfast|lunch)\\b(?=[^.?!]{0,25}\\b(?:at home|(?:at|in) (?:our|my|the) (?:house|home|flat|cupboards?|kitchen)|for days|all day|today|yesterday|tonight|again|to eat|every)\\b)|\\b(?:i|we) (?:have|had|got|has) no (?:food|dinner|breakfast|lunch)\\b|\\bno (?:heating|electric(?:ity)?|clothes)(?= at home| in (?:our|the|my) (?:house|home|flat))|\\bhungry (?:all|every|at night|at home|always)\\b|\\bgo to bed hungry\\b|\\bdo not want to (?:go|be|stay) (?:home|at home|back home)\\b|\\b(?:i|we) (?:want|wanted|wanna|will|am going|am gonna|might|could|should|can|would|have|keep|thinking|think|am thinking)\\b[^.?!]{0,20}\\brun(?:ning)? away\\b|\\b(?:how|can|could|should) (?:do |can |could |would )?i run away\\b|\\brun(?:ning)? away from (?:home|my|mum|dad|school)\\b|\\b(?:want|wanna|going|need|have|will|could|can) (?:to )?leave home\\b|\\bno ?one (?:is )?(?:at )?home\\b|\\b(?:(?:my|our|his|her|their) (?:${KINW})s?|mum|mom|mummy|mommy|mam|mama|mother|dad|daddy|father|papa|stepdad|stepmum|nan|nana|nanny|gran|granny|grandma|grandad|grandpa) (?:\\w+ ){0,3}(?:(?:is |gets |get |was |always )?drunk(?! on)|drinks too much|drinks a lot|drinks all the time|drinks every|drinks and|took (?:lots of|too many|a lot of|all the) (?:pills|tablets)|takes drugs|on drugs|passes out|passed out|collapsed|unconscious|sleeps all day|asleep all day|is always asleep|does not wake up|will not wake up|can not wake up|not wake up|is sick all the time|cries all the time)\\b|\\b(?:wake|waking) (?:up )?(?:my |the )?${KINS}\\b[^.?!]{0,20}\\b(?:can not|could not|will not|does not|not)\\b|\\bcan not wake\\b|\\b(?:do not|does not|did not) feel safe\\b|\\b(?:i|we) (?:am|are|was|were|feel|felt) not safe (?:at|with|in)\\b|\\b(?:i|we|my \\w+) (?:feel|feels|felt|am|are|is|was|were) (?:\\w+ )?unsafe\\b` ) },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "The child describes an adult who is violent, very angry, or a home they hide in.", test: (t) => new RegExp(`\\b${KINS}\\b[^.?!]{0,30}\\b(?:always|keeps?|all the time|every day|every night|again)\\b[^.?!]{0,12}\\b(?:shouting|screaming|yelling|throwing|breaking|smashing|fighting|angry|drunk)\\b|\\b(?:${KINS}|he|she)\\b[^.?!]{0,25}\\b(?:throws?|threw|throwing|breaks?|broke|smash\\w*|punch\\w* (?:a |the )?wall)\\b[^.?!]{0,6}\\b(?:things|plates|stuff|furniture|the (?:tv|door|phone)|glasses|chairs?)\\b|\\b(?:hide|hiding|hid|hides|run and hide)\\b[^.?!]{0,30}\\b(?:from|because|when|until)\\b[^.?!]{0,20}\\b(?:${KINS}|he|she)\\b`).test(t) },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "An adult or older person in the child's bed, bedroom or bathroom, or at night.", test: (t) => new RegExp(`\\b${KINS}\\b[^.?!]{0,25}\\b(?:sleeps?|sleeping|slept|climbs?|climbed|gets?|got|lies|lay|lying)\\b[^.?!]{0,6}\\b(?:in|into|on|with|next to) (?:my )?(?:bed|me)\\b|\\b${KINS}\\b[^.?!]{0,25}\\b(?:comes?|came|enters?|entered|goes|goes|walks?|walked|creeps?|crept|sneaks?)\\b[^.?!]{0,8}\\b(?:in|into|to) (?:my )?(?:room|bedroom|bed)\\b[^.?!]{0,25}\\b(?:night|dark|asleep|sleeping|naked|late|alone|when mum|when dad|when we are alone)\\b|\\b(?:look|looks|looking|watch|watches|watching|stare|stares|staring|peek|peeks|peeking)\\b[^.?!]{0,12}\\b(?:in|while|when)\\b[^.?!]{0,10}\\b(?:shower|bath|toilet|bathroom|changing|getting changed|undressed|naked|dressing)\\b|\\b(?:comes?|came|walks?|walked) in(?:to)? (?:the )?(?:shower|bathroom|toilet|bath)\\b[^.?!]{0,15}\\b(?:i am|when i|while i)\\b`).test(t) },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "Someone does things to the child that the child does not like or has been told to hide.", re: /\b(?:does|did|do|doing|made|makes|make|making|wants to do|want to do)\s+(?:\w+ )?(?:bad|rude|naughty|horrible|nasty|yucky|private|secret|funny|weird|sexy|dirty)\s+(?:things|stuff)\b|\b(?:does|did|do|doing)\s+(?:\w+ )?things to (?:me|us)\b|\b(?:bruises?|marks|bruised)\b[^.?!]{0,40}\b(?:do not want to (?:change|undress|get undressed|swim|go swimming|go to swimming|take off)|hide|hiding|cover|covering|long sleeves)\b|\b(?:hide|hiding|cover|covering)\b[^.?!]{0,10}\b(?:bruises?|marks|cuts|scars)\b/ },
-  { tier: "risk", cat: "online_contact", reason: "A stranger or older person is asking the child for personal details, or flattering the child.", test: (t) => new RegExp(`\\b(?:man|stranger|someone|somebody|boy|girl|person|older \\w+|teenager|lady|woman)\\b[^.?!]{0,30}\\b(?:wanted|asked for|asks for|wants|asked|asks|took|takes|got)\\b[^.?!]{0,14}\\b(?:my )?(?:number|phone number|address|where i live|picture|pictures|photo|photos|snapchat|instagram|whatsapp)\\b|\\b(?:said|says|called|calls|told|tells)\\b[^.?!]{0,10}\\b(?:i am|me|you are) (?:so |very )?(?:pretty|cute|beautiful|sexy|hot|special|handsome|mature|grown up)\\b`).test(t) },
-  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The child may not have money, food or care at home, or may be left behind.", re: /\b(?:no|not enough|run out of|out of|have not got|do not have|never have|no more)\s+(?:any\s+)?(?:money|cash)\b[^.?!]{0,20}\b(?:food|eat|dinner|bills|heating|rent|electric\w*|gas|clothes)\b|\b(?:do not|does not|will not|never|did not|can not)\s+(?:give|gives|let|lets|buy|buys)\s+(?:me|us)\s+(?:my |any |a |our )?(?:medicine|medication|tablets|pills|inhaler|insulin|a drink of water|water|bath|wash|clean clothes|dinner|breakfast|lunch|food)\b|\b(?:do not|did not|can not|never|not allowed to)\s+(?:i |we )?get (?:to )?(?:eat|have food|have dinner|drink|wash|sleep|have a bath|have breakfast|have lunch)\b|\b(?:never|not|will not|would not) (?:come|coming|came|be) back\b[^.?!]{0,20}\b(?:mum|mom|dad|mummy|daddy|nan|gran|she|he)\b|\b(?:mum|mom|dad|mummy|daddy|nan|gran|she|he)\b[^.?!]{0,30}\b(?:leave|leaving|left|gone|go away|abandon\w*|walk out)\b[^.?!]{0,25}\b(?:never|for good|forever|not coming back)\b|\b(?:can not|could not|do not want to|will not) (?:go|get|stay|be) (?:back )?(?:home|at home)\b/ },
-  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The child says they are frightened of a person, or of home.", test: (t) => /\b(?:i|my|me|we|our)\b/.test(t) && new RegExp(`\\b(?:scared|afraid|frightened|terrified|petrified|fear|fearful|dread|dreading)\\b[^.?!]{0,35}\\b(?:home|house|flat|bedroom|him|her|them|someone|somebody|you|my (?:doctor|dentist)|(?:${KINF})s?)\\b|\\b(?:home|house|flat|bedroom|him|her|someone|somebody|(?:${KINF})s?)\\b[^.?!]{0,25}\\b(?:scares?|frightens?|makes? me (?:feel )?(?:so |very )?(?:scared|afraid|frightened|sad|small|unsafe|uncomfortable|worried|yucky)|is scary|are scary)\\b`).test(t) },
-  { tier: "risk", cat: "online_contact", reason: "Someone online or a stranger may be asking the child for something or for secrecy.", re: /\b(?:someone|somebody|a (?:man|stranger|boy|girl|person|friend)|people|they|he|she)\s+(?:online|on (?:the |a |my )?(?:game|app|phone|internet|roblox|minecraft|snapchat|tiktok|instagram|discord|youtube|whatsapp|chat|fortnite|tablet)|from (?:the )?(?:game|internet|app))\b|\bonline\b[^.?!]{0,40}\b(?:asked|asks|ask|wants|wanted|told|tells|messag\w+|texted|sent|says|said|keeps)\s+(?:me|us)\b|\b(?:asked|asks|wants|told|tells)\s+me\s+to\s+(?:send|share|show|take|meet|keep|not tell|delete|turn off|lie)\b|\b(?:do not|not|never) tell\b[^.?!]{0,40}\b(?:picture|photo|pic|online|stranger|secret)\b|\b(?:picture|photo|pic|selfie)\b[^.?!]{0,30}\b(?:and|but) (?:not|do not) tell\b|\bgroom\w*\b|\bmeet (?:up )?(?:with )?(?:a |someone |somebody )?(?:stranger|someone|somebody|man|person)\b[^.?!]{0,15}\b(?:i|from|who|online)\b|\b(?:stranger|man|lady|woman|someone|somebody|person)\b[^.?!]{0,25}\b(?:asked|told|wanted|says|said|tried|tries|wants)\b[^.?!]{0,8}\b(?:me|us)\b[^.?!]{0,8}\bto (?:get in|get into|come with|come in|go with|go in|follow|meet|open|take)\b|\b(?:stranger|man|someone|somebody|person|people|boy|boys|girl)\b[^.?!]{0,15}\b(?:follow|follows|followed|following|chase|chased|chasing|offered|tried to take|tried to get)\b[^.?!]{0,15}\b(?:me|us)\b/ },
-  /* ways of saying "I do not want to be here" that are not the plain words: jumping off something high, stopping existing, nobody would notice */
-  { tier: "risk", cat: "self_harm_or_suicide", reason: "The words may mean the child is thinking about hurting themselves or no longer existing.", re: /\b(?:thinking|think|thought|want|wanted|wish|going|planning|keep thinking|feel like|feels like|how (?:do|can|would) i)\b[^.?!]{0,30}\b(?:jump(?:ing)? (?:off|from|out of|in front of)|run(?:ning)? in front of (?:a |the )?(?:car|bus|train|lorry)|hang(?:ing)? myself|cut(?:ting)? my (?:wrists?|arms?)|swallow(?:ing)? (?:all |lots of |my )?(?:pills|tablets)|tak(?:e|ing) (?:all |lots of |too many )?(?:my )?(?:pills|tablets)|stop(?:ping)? (?:existing|being alive|being here|living|breathing))\b|\b(?:i|me|my)\b[^.?!]{0,40}\bstop(?:ping)? (?:existing|being alive|being here|living)\b|\b(?:wish|want|wanted|hope|wanna)\b[^.?!]{0,30}\b(?:cease to exist|never exist|just vanish|just disappear|be gone for good|not be around any ?more|not be here any ?more)\b|\b(?:i|me)\b[^.?!]{0,25}\bthink(?:ing)? about (?:dying|death|being dead|killing myself|ending it)\b|\bno point (?:in )?(?:living|going on|anything|being here|being alive)\b|\b(?:can not|could not) (?:go on|carry on|do this any ?more)\b|\b(?:everyone|everybody|they|mum|dad) would be (?:happier|better|fine|ok|okay) (?:off )?without me\b|\b(?:no one|nobody) would (?:even )?notice if i (?:was|were|died|disappeared|went)\b/ },
-  /* a hand where it should not be */
-  { tier: "risk", cat: "abuse_or_hurt", reason: "A hand up, down or inside the child's clothes, or on their private parts.", re: /\b(?:hand|hands|finger|fingers)\b[^.?!]{0,12}\b(?:up|down|inside|under|in|into|on|between)\b[^.?!]{0,8}\b(?:my|our) (?:skirt|dress|pants|trousers|knickers|underwear|pyjamas|bum|bottom|thighs?|privates?|private parts)\b/ },
-  /* choking and smothering */
-  { tier: "risk", cat: "abuse_or_hurt", reason: "Someone may be choking, strangling or smothering the child.", re: /\b(?:squeez\w*|grab\w*|press\w*|clutch\w*|clamp\w*|held|holds?|holding)\b[^.?!]{0,8}\b(?:my|our) (?:neck|throat)\b|\b(?:hold|holds|held|holding|push|pushes|pushed|pushing|keep|keeps|kept|put|puts|putting|duck|ducks)\b[^.?!]{0,12}\b(?:my|our) (?:head|face)\b[^.?!]{0,10}\bunder\b|\b(?:hold|holds|held|push|pushes|pushed|keep|keeps|kept|put|puts)\s+(?:me|us)\s+under\s+(?:the )?water\b|\b(?:hands?|fingers?|arms?|rope|belt|cord)\b[^.?!]{0,15}\b(?:round|around|on|over|across|against) (?:my|our|his|her) (?:neck|throat)\b|\b(?:pillow|cushion|hand|hands|blanket)\b[^.?!]{0,12}\b(?:over|on|against|across) (?:my|our) (?:face|mouth|nose)\b|\b(?:can not|could not|cannot) breathe\b[^.?!]{0,15}\b(?:because|when|while)\b[^.?!]{0,35}\b(?:hand|hands|arm|sits?|pillow|holds?|presses|squeezes|covers|choke\w*)\b|\b(?:smother\w*|suffocat\w*)\b[^.?!]{0,15}\b(?:me|us)\b/ },
-  /* grooming and sexual exploitation: clothes off, naked, photos or videos of the child's body, "special games" with a person */
-  { tier: "risk", cat: "abuse_or_hurt", reason: "The child may be asked or made to undress, or to be photographed or filmed without clothes.", test: (t, ss) => ss.some((s) => FIRST.test(s) && ((UNDRESS.test(s) && (PICT.test(s) || ASKING.test(s) || PEOPLE.test(s))) || (PICT.test(s) && BODYPIC.test(s) && (ASKING.test(s) || PEOPLE.test(s))))) },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "Someone wants to see, touch or be shown the child's body, or has sent a picture of theirs.", re: /\b(?:want|wants|wanted|asks?|asked|tries|tried|trying|keeps? asking|told|tells|says?|said)\b[^.?!]{0,16}\b(?:see|look at|looking at|show|touch|feel|stroke|kiss|photograph)\b[^.?!]{0,10}\b(?:my|our|me|us)\b[^.?!]{0,10}\b(?:body|bum|bottom|privates?|private parts|chest|tummy|legs|naked|undressed|without)\b|\b(?:pic|pics|picture|pictures|photo|photos|video|videos)\s+of\s+(?:his|her|their)\s+(?:willy|penis|vagina|privates?|private parts|body|bum|bottom|chest|boobs|breasts)\b/ },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "Someone watches the child change, wash or use the toilet.", re: /\b(?:watch|watches|watching|watched|look|looks|looking|looked|stare|stares|staring|peek|peeks|peeking)\s+(?:at )?(?:me|us)\b[^.?!]{0,15}\b(?:get changed|getting changed|change|changing|undress\w*|get undressed|in the (?:bath|shower|toilet|bathroom)|on the toilet|having a (?:bath|shower)|naked|wash|washing)\b/ },
-  { tier: "risk", cat: "abuse_or_hurt", reason: "A person plays special, secret or private games with the child, or is in the child's room or bed.", test: (t, ss) => ss.some((s) => FIRST.test(s) && PEOPLE.test(s) && /\b(?:special|secret|private|grown ?up|adult|naughty|tickle|tickling)\s+(?:games?|play)\b/.test(s)) },
-  /* coercive secrecy: told to keep quiet, with a price to pay for telling */
-  { tier: "risk", cat: "abuse_or_hurt", reason: "The child says there is a price for telling, or that they are not allowed to tell.", test: (t, ss) => ss.some((s) => (FIRST.test(s) && TELLV.test(s) && CONSEQ.test(s) && /\b(?:if|when|because|or|unless|after|for|else|otherwise)\b/.test(s)) || NOTTELL.test(s)) },
-  /* withholding care: food, drink, sleep, washing, the toilet; being locked out or in */
-  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The child may be refused food, drink, sleep, washing, the toilet or a way in.", test: (t) => CARE.some((re) => re.test(t)) },
-  /* fear of a person: their temper, anger, moods or shouting */
-  { tier: "risk", cat: "abuse_or_hurt", reason: "The child is afraid of someone's temper, anger, moods or shouting.", test: (t, ss) => ss.some((s) => FEAR.test(s) && TEMPER.test(s) && new RegExp(`\\b(?:${KINW.replace("|they", "")}|someone|somebody)s?\\b`).test(s)) },
-  /* sensitive: a topic the teacher should decide on */
+function swapOnly(a, b) { if (a.length !== b.length) return false; let i = 0; while (a[i] === b[i]) i++; return a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2); }
+/* a word of 5 or more letters is mended to a worry word one edit away. A word of 4 letters only when two letters are swapped ("hrut"): one edit from a short word is nearly always another ordinary word (tell and yell, does and dies). */
+function mend(w) {
+  if (w.length < 4 || WORRY_KIND.has(w) || NOT_MENDED.has(w) || isPerson(w)) return w;
+  if (w.length === 4) { for (const c of MEND.get(4) || []) if (swapOnly(w, c)) return c; return w; }
+  for (const L of [w.length, w.length - 1, w.length + 1]) for (const c of MEND.get(L) || []) if (oneEdit(w, c)) return c;
+  return w;
+}
+/* the words with every token mended, still in one string. Work is bounded: the question is cut at 500 letters. */
+const mendText = (t) => t.replace(/[a-z]{4,}/g, mend);
+
+/* ----- phrases (on the mended text) ----- */
+const WPH = {
+  body: /\b(?:(?:take|takes|took|taking|make|makes|made)\b[^.?!]{0,12}\b(?:clothes|top|shirt|pants|trousers|knickers|underwear|bra|vest)\s+(?:off|of|down)|does (?:bad|rude|naughty|horrible|nasty|private|secret) things|(?:shows?|showed|sends?|sent) (?:me|us) (?:rude|naughty|dirty|nude|naked|bad)|special games?|secret games?|(?:take|takes|took|taking) off (?:my|your|his|her|their|our) \w+|without (?:my |any )?clothes|no (?:top|shirt|pants|trousers|knickers|underwear) on|(?:see|look at|show|touch|feel) (?:my|your) (?:body|bum|bottom|privates|private parts|chest)|(?:makes?|made|force[sd]?) (?:me|us) (?:to )?(?:do|show|touch) (?:things|stuff|what)|(?:my|your) body|stripp?(?:ed|ing|s)?|(?:in|into|on|to|under) my (?:bed|bedroom|room)\b[^.?!]{0,25}\b(?:night|dark|asleep|sleeping)|\bnight\b[^.?!]{0,25}\b(?:in|into|on) my (?:bed|bedroom|room)|sits? on my bed|sleeps? in my bed|gets? in(?:to)? my bed|in my bed|no clothes|pants down|knickers down|trousers down|(?:get|gets|getting|got) (?:dressed|changed|undressed)|changing (?:room|clothes)|(?:film|video|photo|photograph|picture|pic|selfie)s? of (?:me|us|my)|(?:film|films|filmed|filming|videoing|videoed|photographs|photographed|photographing) (?:me|us|my)|(?:take|takes|took|taking) (?:a |some )?(?:pictures?|photos?|pics?|videos?) of (?:me|us|my))\b/,
+  secret: /\b(?:(?:sent|send|sends|taken|take|takes|put|go|going) (?:me |us )?(?:away|into care|to a home|to care)|(?:no one|nobody) (?:will|would) (?:believe|listen)|believe me|big trouble|do not tell|not to tell|promise not|promised not|trouble if|in trouble|keep quiet|keep it secret|our secret|told not to|must not tell|tell anyone|tell anybody|tell mum|tell dad|tell the teacher|not tell)\b/,
+  neglect: /\b(?:run(?:ning)? away|ran away|can not go (?:home|back)|do not want to go home|never come back|never coming back|not coming back|leave (?:me|us)|abandon\w*|no money|heating (?:is )?off|(?:do not|does not|dont|never) (?:i |we )?get to (?:eat|have|drink|wash|sleep)|sleeps? all day|asleep all day|own (?:breakfast|dinner|tea|food)|never (?:in|home|there)|(?:no one|nobody) (?:comes|came|is coming)|(?:not|never) (?:let|lets) (?:me|us) in\b|not allowed to (?:go to|use) the (?:toilet|loo|bathroom)|(?:not allowed|never allowed|wont let me|will not let me|do not let me|does not let me|not let me|never lets me|never let me) (?:\w+ ){0,3}?(?:food|dinner|breakfast|lunch|eat|drink(?=\s*$|\s+(?:water|milk|any|anything|a drink))|water|toilet|loo|bed|sleep|bath|wash)|(?:takes?|took|taking) away (?:my|our) \w+|(?:takes?|took|taking) (?:my|our) (?:dinner|food|breakfast|lunch|bed|blankets?)|lock(?:s|ed)? (?:me|us) (?:out|in)|(?:can not|not allowed to) (?:have|get|take) (?:a )?(?:bath|shower)|(?:do not|does not|did not|never) (?:get|have|eat) (?:any |a |my )?(?:food|dinner|breakfast|lunch|meals?)|(?:no one|nobody|noone) (?:gives|feeds|lets|helps|looks|takes|picks|cares)|go(?:es|ing)? without|(?:keeps?|kept) (?:me|us) (?:up|awake)|(?:sleep|sleeps|sleeping|slept) (?:in|on|outside|under) (?:the |a |my )?(?:garden|car|shed|garage|cupboard|floor|stairs|street|hall)|(?:keeps?|kept|locks?|locked|puts?|put|shuts?|shut) (?:me|us) (?:in|into|inside) (?:a |the |my )?(?:cupboard|shed|cellar|attic|loft|garage|cage|box|bathroom|toilet|room)|(?:left|stay|stays|stayed|sleep|sleeps|slept|am|are|is|get|got) (?:alone|on my own|by myself)|home alone|(?:no|not enough) (?:food|dinner|breakfast|lunch|blankets?|bed|covers|heating)|nothing to eat|not (?:been )?fed|without (?:food|dinner|a blanket|a bed)|sent outside|put outside|left outside|locked out|outside in the (?:cold|rain|dark)|out in the cold|sleep(?:s|ing)? on the floor|slept on the floor|on the cold floor|so cold|too cold)\b/,
+  self: /\b(?:end(?:ing)? (?:my life|it all|myself)|passed out|falls over|fell over|took (?:lots of|too many|all the) (?:pills|tablets)|hate myself|want to die|better off without|no one would miss|do not want to be here|not be here|stop existing|never born|end it all|can not remember|do not remember|makes? me sleepy)\b/,
+  fear: /\b(?:hid(?:e|es|ing|den)? (?:from|under|in (?:my|the) (?:room|toilet|bathroom|cupboard|wardrobe|bed)|away)|(?:comes?|came|walks?|watch\w*|looks?|peek\w*|stares?|sees?|saw)[^.?!]{0,25}\b(?:bath|shower|toilet|changing)\b|\b(?:bath|shower|toilet|changing)\b[^.?!]{0,20}\b(?:comes?|came|watch\w*|looks?|peek\w*|stares?)\b)\b/,
+  harm: /\b(?:(?:push|pushes|pushed|pushing|shove|shoves|shoved|grab|grabs|grabbed|pinch|pinches|pinched|squeeze|squeezes|squeezed|drag|drags|dragged|scratch|scratches|scratched|burn|burns|burnt|burned) (?:me|us|him|her|them|my \w+)|cut(?:s|ting)? (?:myself|my (?:arms?|wrists?|legs?)))\b|\bbroke(?: \w+){0,2}? (?:arm|leg|nose|wrist|rib|jaw|finger)\b/,
+  online: /\b(?:asked me to (?:get in|get into|come with|go with|follow)|(?:get|come) (?:in|into) (?:a |the |his |her )?(?:car|van)|offered me (?:a lift|sweets|money|a ride)|(?:gives?|gave) me (?:sweets|money|presents)|my number|wanted my number|asked for my number|send(?:s|ing)? (?:me )?(?:a )?(?:pictures?|photos?|pics?)|where i live|phone number|my address|meet(?:ing)? (?:up )?(?:with )?(?:a |an )?(?:stranger|someone|somebody|him|her|them|a man|a boy|a girl)|message(?:s|d)? (?:me|from a)|messaging me)\b/
+};
+const WPH_KIND = Object.keys(WPH);
+
+/* ----- risk: a short, explicit list ----- */
+const BODYW = "body|bum|bottom|chest|tummy|belly|legs?|thighs?|hair|arms?|neck|face|head|hands?|back|bits|privates|private parts|private bits|boobs|breasts?|knickers|pants|underwear|mouth|lips";
+const RV = {
+  hurt: "hit|hits|hitting|hurt|hurts|hurting|beat|beats|beating|beaten|slap|slaps|slapping|slapped|smack|smacks|smacking|smacked|punch|punches|punching|punched|kick|kicks|kicking|kicked|bite|bites|bit|bitten|biting|choke|chokes|choking|choked|strangle|strangles|strangling|strangled|stab|stabs|stabbed|stabbing|burn|burns|burnt|burned|whip|whips|whipped|belt|belts|belted|spank|spanks|spanked|pinch|pinches|pinched|threaten|threatens|threatened|abuse|abuses|abused|bully|bullies|bullied|bullying|smother|smothers|smothered|suffocate|suffocates|suffocated|starve|starves|starved|touch|touches|touched|touching|undress|undresses|undressed",
+  rough: "push|pushes|pushed|pushing|shove|shoves|shoved|grab|grabs|grabbed|pull|pulls|pulled|squeeze|squeezes|squeezed|drag|drags|dragged|scratch|scratches",
+  soft: "kiss|kisses|kissed|kissing|tickle|tickles|tickled|tickling",
+  film: "film|films|filmed|filming|photograph|photographs|photographed|record|records|recorded|video|videos|videoed"
+};
+const OBJ_NOUN = `(?:the |a |his |her |their |our |my )?(?:${OTHER_NOUNS})`;
+const R_OBJ = `(?:me|us|myself|ourselves|you|him|her|them|my (?:${BODYW}|${OTHER_NOUNS})|our (?:${OTHER_NOUNS})|${OBJ_NOUN})`;
+const PREP = "(?: (?:at|on|in|to|up|out|over|around|off|down|with))?(?: (?:always|often|really|badly|hard|again|sometimes|just|so))?";
+const R_HARM = new RegExp(`\\b(?:${RV.hurt})\\b${PREP} ${R_OBJ}\\b`);
+const R_ROUGH = new RegExp(`\\b(?:${RV.rough})\\b${PREP} (?:me|us|my (?:${BODYW}))\\b`);
+const R_ROUGH_BAD = /\b(?:hard|tight|tightly|again|every|always|keeps?|hurts?|hurt|bruise\w*|down|over|into|against|away|round|around|stairs|wall|floor|mean|pain|cry|crying)\b/;
+const R_SOFT = new RegExp(`\\b(?:${RV.soft})\\b${PREP} (?:me|us|my (?:${BODYW})|him|her|them)\\b`);
+const R_SOFT_BAD = /\b(?:stop|will not stop|do not like|does not like|not like|uncomfortable|secret|private|lips|mouth|in (?:my )?bed|at night|bedroom|naked|do not want|hurts?|yucky|icky|funny feeling|tongue|bum|bottom|body|trouble)\b/;
+const R_FILM = new RegExp(`\\b(?:${RV.film})\\b (?:me|us|my (?:${BODYW}))\\b|\\b(?:take|takes|took|taking|taken) (?:a |some )?(?:pictures?|photos?|pics?|videos?) of (?:me|us|my (?:${BODYW}))\\b|\\b(?:video|photo|picture|pic|film)s? of (?:me|us|my (?:${BODYW}))\\b`);
+const R_FILM_BAD = /\b(?:dress\w*|chang\w*|naked|nude|bath|shower|toilet|pants|underwear|knickers|clothes|undress\w*|private)\b/;
+const R_STRIP = /\b(?:naked|nude|undress|undresses|undressed|undressing|no clothes|without (?:any |my )?clothes|no clothes on)\b/;
+const R_CLOTHES = /\b(?:take|takes|took|taking|pull|pulls|pulled) (?:my |your |his |her |their |our )?(?:top|shirt|clothes|pants|trousers|knickers|underwear|bra|vest|dress|shorts|skirt) (?:off|down)\b|\bclothes off\b|\bpants down\b|\bknickers down\b/;
+const R_CHOKE = /\b(?:hands?|fingers?|arms?|rope|belt|cord)\b[^.?!]{0,15}\b(?:round|around|on|over|across|against) (?:my|our) (?:neck|throat)\b|\b(?:squeez\w*|grab\w*|press\w*|clutch\w*|clamp\w*|held|holds?|holding|choke\w*|strangl\w*)\b[^.?!]{0,10}\b(?:my|our) (?:neck|throat|nose)\b|\b(?:pillow|cushion|hand|hands|blanket)\b[^.?!]{0,12}\b(?:over|on|against|across) (?:my|our) (?:face|mouth|nose)\b|\b(?:hold|holds|held|holding|push|pushes|pushed|keep|keeps|kept|put|puts|putting|duck|ducks)\b[^.?!]{0,12}\b(?:my|our) (?:head|face)\b[^.?!]{0,10}\bunder\b|\b(?:hold|holds|held|push|pushes|pushed|keep|keeps|kept|put|puts)\s+(?:me|us)\s+under\s+(?:the )?water\b|\b(?:hold|holds|held|holding|pinch|pinches|cover|covers|covered) my nose\b/;
+const R_HAND = /\b(?:hand|hands|finger|fingers)\b[^.?!]{0,12}\b(?:up|down|inside|under|in|into|on|between)\b[^.?!]{0,8}\b(?:my|our) (?:skirt|dress|pants|trousers|knickers|underwear|pyjamas|bum|bottom|thighs?|privates?|private parts)\b/;
+const R_SHOW = /\b(?:shows?|showed|showing) (?:me|us) (?:his|her|their) (?:private|privates|willy|penis|vagina|bum|bottom|body|boobs|breasts)\b|\b(?:asks?|asked|wants?|wanted|tells?|told|makes?|made) (?:me|us) (?:to )?(?:show|touch|kiss|undress|take off)\b/;
+const R_THREAT = /\bthreaten\w* (?:to )?(?:send|hit|hurt|kill|take|put|leave|lock)\b|\b(?:kill|kills|killed|murder|murders) (?:me|us)\b|\b(?:will|would|going to|gonna) (?:hit|hurt|kill|beat|punish|slap|smack|belt|punch|kick) (?:me|us)\b|\bthrow(?:s|n|ing)?\b(?: \w+){0,3}? at (?:me|us)\b|\bthrew\b(?: \w+){0,3}? at (?:me|us)\b/;
+const R_BRUISE = new RegExp(`\\b(?:bruise|bruises|bruised|black eye|welts?|marks|scars?|cuts)\\b(?: \\w+){0,7}? (?:from|by|because of|caused by) (?:my |our |his |her )?(?:${OTHER_NOUNS})s?\\b`);
+const R_SHOWBAD = /\b(?:shows?|showed|showing|sends?|sent) (?:me|us) (?:\w+ )?(?:rude|naughty|dirty|porn\w*|adult|nude|naked|sexy|inappropriate|bad) (?:videos?|pictures?|photos?|pics?|films?|clips?|things)\b|\b(?:pictures?|photos?|pics?|videos?)\b[^.?!]{0,25}\b(?:himself|herself|themselves)\b[^.?!]{0,20}\b(?:no clothes|naked|nude|undressed|private)\b/;
+const R_WATCH = /\b(?:looks?|looking|looked|watch\w*|stare\w*|peek\w*) at me\b[^.?!]{0,20}\b(?:shower|bath|toilet|changing|naked|undressed|getting dressed|getting changed)\b/;
+const R_ABUSE = /\b(?:am i|is it|are we) (?:being )?abus\w*\b|\babus\w*\b[^.?!]{0,15}\bto me\b|\bhappening to me\b/;
+const R_BREATHE = /\b(?:can not|could not|cannot) breathe\b/;
+const R_TELLNOT = /\b(?:do not|dont|must not|not to|and not|or not|told me not to|asked me not to|said not to|told us not to|promise not to|promised not to) tell\b|\bnot allowed to (?:tell|say what|say anything|talk about it)\b|\b(?:keep|stay) quiet\b[^.?!]{0,30}\b(?:or|else|otherwise)\b|\bcan not tell (?:anyone|anybody|someone|somebody|no one|nobody|(?:my )?(?:mum|mom|dad|teacher|nan|gran|parents)|what (?:happened|happens|he|she|they|goes on|went on))\b|\b(?:if|when) (?:i|we) (?:tell|told|say|said)\b[^.?!]{0,40}\b(?:hit|hurt|punish\w*|in trouble|in big trouble|beat\w*|sent away|sent to a home|sent into care|put in care|taken away|taken into care|kill)\b|\b(?:hit|hurt|punish\w*|beat|kill|send|take) (?:me|us)(?: away)? (?:if|when) (?:i|we) (?:tell|told|say|said)\b|\btrouble if\b|\b(?:sent away|taken away|taken into care|put in care|sent to a home|in trouble|in big trouble|punished|be hurt|be hit|get hurt|get hit|get beaten|get punished|get a hiding)\b[^.?!]{0,15}\b(?:if|when) (?:i|we) (?:tell|told|say|said|speak|spoke|talk|talked|ask)\b|\b(?:will|would|going to) (?:hurt|hit|kill|beat|punish|take|send)\b[^.?!]{0,20}\b(?:if|when) (?:i|we) (?:tell|told|say|said)\b|\b(?:want|wants|wanted|asks?|asked|tells?|told|makes?|made|said|says) (?:me |us )?(?:to )?keep (?:\w+ ){0,3}?(?:secret|quiet)\b|\bour (?:little )?secret\b|\bkeep (?:it|this|that) (?:a )?(?:secret|quiet)\b|\b(?:keep|stay|is|just|be|it is|this is) (?:just )?between us\b|\bsecret from (?:mum|dad|my|your|parents|the teacher)\b/;
+const R_SECRET2 = /\bsecret\b/;
+const R_TOUCHW = /\b(?:touch\w*|kiss\w*|undress\w*|naked|nude|private|privates|(?:photos?|pictures?|pics?|videos?) of (?:me|us|my))\b/;
+const SELFV = "hurt|harm|cut|burn|scratch|hit|punish|starve|bite|choke|hang|poison|hurting|harming|cutting|burning|scratching|hitting|punishing|starving|biting|choking|hanging|poisoning";
+const R_SELF = new RegExp(`\\b(?:kill(?:ing)? (?:my ?self|myself)|(?:want|wanna|wanted|going|thinking of|think about|thought about|planning|keep thinking about|keep|keeps|kept|feel like|feels like|should|could|would like|try|tried|trying|start|started|starting|sometimes|often|always|again|every (?:day|night)) (?:to |about )?(?:${SELFV})(?:s)? (?:my ?self|myself)|(?:${SELFV})(?:s)? (?:my ?self|myself) (?:on purpose|till|until|again|every|so |to feel|deeply|bleed)|(?:want|wants|wanted|wish|wished|wanna|going|thinking of|think about|thinking about|thought about|planning|keep thinking about) (?:to )?(?:die|dying|death|be dead|dead|end (?:it|my life|it all)|not be here|not be alive|not exist|stop existing|stop living|stop breathing|never be born)|(?:do not|did not|would not|will not) (?:want|wanna) (?:to )?(?:be here|live|be alive|exist|go on|be around|be me|wake up)|(?:wish|wished) (?:i|to) (?:was|were|be) (?:dead|gone|not here|never born|not born|invisible)|never (?:been )?born|stop existing|stop being (?:alive|here)|suicid\\w*|end(?:ing)? my (?:own )?(?:life|it all)|take my (?:own )?life|(?:better|happier) (?:off )?without me|everyone (?:would be )?happier if (?:i|we) (?:was|were) gone|no ?one would (?:miss|care|notice)|no point (?:in )?(?:living|going on|being here|being alive|anything)|(?:can not|could not) go on|(?:want|wish|wanna|hope)\\w* (?:to )?(?:just )?(?:disappear|vanish)|make myself (?:disappear|vanish)|myself (?:disappear|vanish)|(?:feel like|feels like) (?:i|we) (?:should|could|would) (?:just )?(?:disappear|vanish|not be here)|(?:do not|did not) like (?:being alive|being here|living|my life|being me)|hate (?:being alive|my life|living)|(?:thinking|think|thought|want|wanted|feel like|feels like|planning|keep thinking) (?:about |to |of )?(?:jump|jumping) (?:off|from|out of) (?:something high|a (?:high )?(?:bridge|roof|building|cliff|balcony|tower|window)|the (?:roof|bridge|balcony|cliff|top|window)|my (?:balcony|window))|(?:thinking|think|want|wanted|feel like|feels like|planning|keep thinking) (?:about |to |of )?(?:run|running) in front of (?:a |the )?(?:car|bus|train|lorry)|(?:thinking|think|want|wanted|feel like|feels like|planning|keep thinking|could|should) (?:about |to |of )?(?:just )?(?:take|taking|swallow|swallowing) (?:all |lots of |too many )?(?:my )?(?:pills|tablets)|(?:wish|want|hope|wanted) [^.?!]{0,30}\\b(?:not|never) wake up|go to sleep and (?:not|never) wake|hang myself)\\b`);
+const NEEDS_W = "(?:eat(?=\\s*$|\\s+(?:and|when|if|because|anything|any|dinner|breakfast|lunch|tea|supper|food|a meal|meals|my dinner))|food|dinner|breakfast|lunch|supper|meals?|a drink|any drink|drink water|water|wash|a bath|sleep(?=\\s*$|\\s+(?:and|when|if|because))|go to the toilet|use the toilet|go to bed)";
+const R_NEGLECT = new RegExp(`\\b(?:no (?:food|dinner|breakfast|lunch) (?:for|all|since|today|tonight|yesterday|again|last night|at home|in (?:our|my|the) (?:house|home|flat))|(?:i|we) (?:have|had|has) no (?:food|dinner|breakfast|lunch)|(?:am|are|get|got|was|were) left (?:alone|on my own|by myself)(?: \\w+){0,3}? (?:all night|overnight|every night|for days|all day|all weekend|at night)|(?:get|gets|got|am|is|are|was|keep getting) locked (?:in|inside) (?:my |a |the )?\\w+ (?:for|all|every)|(?:lock|locks|locked|shut|shuts) (?:me|us) (?:in|inside) (?:a |the |my )?(?:cupboard|room|bathroom|bedroom|shed|cellar|garage|attic|loft|toilet|dark)|(?:lock|locks|locked|shut|shuts) (?:me|us) (?:in|inside)(?: \\w+){0,4}? (?:for hours|all night|all day|overnight|for days|again)|nothing to eat|(?:i|we) (?:have|had|has) not (?:eaten|had (?:anything|any food|dinner|lunch|breakfast))|(?:nobody|no one|noone) (?:feeds|looks after|takes care of|cooks|picks me|collects me|is at home|is there for)|(?:left|leaves|leaving|locks|locked|lock|shut|shuts) (?:me|us)(?: \\w+){0,3}? (?:alone|on my own|by myself|on our own|by ourselves)(?: \\w+){0,3}? (?:all night|overnight|every night|for days|all day|all weekend|all the time|at night)|(?:left|leaves|leaving) (?:me|us) (?:alone|on my own|by myself) (?:all|every|at night|overnight|for days)|(?:alone|on my own|by myself) (?:all night|every night|overnight|for days)|home alone (?:all night|every night|overnight|for days|again)|(?:sent|put|left|locked|shut|kept|threw|thrown) (?:me|us)(?: \\w+){0,2}? (?:outside|out of the house)\\b(?: \\w+){0,4}? (?:cold|rain|dark|snow|night|hours)|(?:get|gets|got|am|is|are|was) (?:sent|put|left|locked|shut|kept) (?:out|outside)(?: \\w+){0,4}? (?:cold|rain|dark|snow|night|hours)|locked out(?: \\w+){0,2}? (?:all night|overnight|in the cold|in the rain|for hours)|(?:have to|had to|has to|must|always|every night|made to|makes me|make me|forced to) (?:\\w+ ){0,3}?sleep\\w* on the (?:floor|stairs|ground)|sleep\\w*[^.?!]{0,40}\\b(?:no|without a?) (?:blankets?|covers|duvet|pillow|bed)|(?:not|never) (?:given|fed) (?:\\w+ ){0,2}?(?:food|dinner|breakfast|lunch|a drink|water)|(?:will not|would not|does not|do not|did not|can not|never|refuses to|refused to) (?:let|lets|give|gives|feed|feeds) (?:me|us) (?:\\w+ )?${NEEDS_W}|(?:scared|afraid|frightened|terrified) (?:to|of) (?:go|going|be|being|stay|staying) (?:home|at home|back home)|do not want to (?:go|be|stay) (?:home|at home|back home)|(?:do not|does not|did not) feel safe (?:at|in|with)|(?:i|we) (?:want|wanna|am going) to run away|(?:can|could|should|how do|how can) (?:i|we) run away|(?:i|we) (?:am|are) (?:always )?(?:hungry|cold) (?:all the time|every day|every night|at home))\\b`);
+const R_SUBST = /\b(?:gives?|gave|giving|made|makes|make) (?:me|us)\b[^.?!]{0,30}\b(?:medicine|pills|tablets|drugs|beer|wine|alcohol|something to drink)\b/;
+const R_SLEEPY = /\b(?:sleepy|dizzy|can not remember|do not remember|forget|passed out|asleep)\b/;
+const R_ONLINE = /\b(?:stranger|man|someone|somebody|person|lady|woman)\b[^.?!]{0,40}\b(?:asked|told|wanted|tried to make|tried to get) me to (?:get in|get into|come with|go with|follow)\b|\b(?:online|stranger|man|someone|somebody|person|boy|girl)\b[^.?!]{0,40}\b(?:asked|asks|wants|wanted|keeps asking) (?:for |me for |me to (?:send|share|show) )?(?:my |your |a |some )?(?:address|where i live|phone number|photos?|pictures?|pics?|nudes?|naked)\b/;
+const R_BREAK = new RegExp(`\\b(?:broke|breaks|breaking|snapped|cracked|twisted) (?:my|our|(?:${OTHER_NOUNS})s?) (?:arm|leg|nose|finger|fingers|tooth|teeth|wrist|rib|ribs|bone|bones|jaw|neck)\\b`);
+const R_HARM_PASSIVE = /\b(?:am|is|are|get|gets|getting|being|always|keep|keeps) (?:getting |being )?(?:hit|hurt|kicked|punched|beaten|slapped|smacked|choked|strangled|bitten|abused|bullied|threatened|touched|filmed|photographed)\b/;
+
+const sentencesOf = (t) => t.split(/[.?!;\n]+/).map((x) => " " + x.trim() + " ").filter((x) => x.trim());
+const wordsOf = (s) => s.match(/[a-z]+/g) || [];
+const otherPeople = (s, hasName) => (hasName ? ["[name]"] : []).concat(wordsOf(s).filter((w) => isPerson(w) && !SELF_W.has(w)), /\[name\]/.test(s) ? ["[name]"] : []);
+const selfy = (s) => wordsOf(s).some((w) => SELF_W.has(w));
+/* the explicit list. Each test is applied to one sentence of the mended text and may look for another person in it. */
+function riskOf(t, hasName) {
+  for (const s of sentencesOf(t)) {
+    const p = otherPeople(s, hasName).length > 0;
+    const rest = (re) => otherPeople(s.replace(re, " "), hasName).length > 0; /* a person who is not the one the words are done to */
+    if (R_HARM.test(s) && rest(R_HARM)) return ["abuse_or_hurt", "A person may be hitting, hurting or touching the child, or someone the child knows."];
+    if (R_ROUGH.test(s) && R_ROUGH_BAD.test(s) && rest(R_ROUGH)) return ["abuse_or_hurt", "A person may be pushing, grabbing or squeezing the child."];
+    if (R_SOFT.test(s) && R_SOFT_BAD.test(s) && rest(R_SOFT)) return ["abuse_or_hurt", "A person kisses or tickles the child in a way that may not be wanted."];
+    if (R_FILM.test(s) && R_FILM_BAD.test(s) && rest(R_FILM)) return ["abuse_or_hurt", "A person films or photographs the child while changing, washing or undressed."];
+    if (p && R_BREAK.test(s)) return ["abuse_or_hurt", "A person may have broken a bone of the child."];
+    if (p && R_BRUISE.test(s)) return ["abuse_or_hurt", "Bruises or marks that may come from a person."];
+    if (p && (R_SHOWBAD.test(s) || R_WATCH.test(s))) return ["abuse_or_hurt", "A person shows the child rude pictures, sends their own, or watches the child change or wash."];
+    if (R_ABUSE.test(s)) return ["abuse_or_hurt", "The child asks whether abuse is happening to them."];
+    if (p && R_CHOKE.test(s)) return ["abuse_or_hurt", "Someone may be choking, smothering or holding the child under water."];
+    if (p && R_HAND.test(s)) return ["abuse_or_hurt", "A hand where it should not be."];
+    if (p && R_SHOW.test(s)) return ["abuse_or_hurt", "Private parts shown, or the child asked to show or touch."];
+    if (p && R_THREAT.test(s)) return ["abuse_or_hurt", "A person threatens or throws things at the child."];
+    if (R_HARM_PASSIVE.test(s)) return ["abuse_or_hurt", "The child may be being hit, hurt or touched."];
+    if (R_STRIP.test(s) && selfy(s)) return ["abuse_or_hurt", "Naked, nude or undressing is mentioned close to the child."];
+    if (p && R_CLOTHES.test(s)) return ["abuse_or_hurt", "A person may be asking the child to undress."];
+    if (R_TELLNOT.test(s) && (p || selfy(s))) return ["abuse_or_hurt", "A secret, or being told not to tell, with a person."];
+    if (R_SECRET2.test(s) && R_TOUCHW.test(s) && p) return ["abuse_or_hurt", "A secret that goes with touching, undressing or pictures."];
+    if (R_BREATHE.test(s) && p) return ["abuse_or_hurt", "The child can not breathe, and a person is mentioned."];
+    if (p && R_SUBST.test(s) && R_SLEEPY.test(s)) return ["abuse_or_hurt", "A person gives the child something that makes them sleepy or forget."];
+    if (p && R_ONLINE.test(s)) return ["online_contact", "Someone online or a stranger may be asking the child for something."];
+    if (R_SELF.test(s)) return ["self_harm_or_suicide", "The words may mean the child wants to hurt themselves, to die, or not to be here."];
+    if (R_NEGLECT.test(s)) return ["neglect_or_unsafe_home", "The words suggest the child may be neglected, left alone, not fed or kept outside."];
+  }
+  return null;
+}
+
+/* ----- the sensitive topics a teacher decides on ----- */
+const TOPIC_RULES = [
   { tier: "sensitive", cat: "unclear", key: "injection", reason: "The words tell the AI to ignore its rules.", re: /\b(?:ignore|disregard|forget|bypass|override)\s+(?:all |any |your |the |previous |prior |these |those |my |every )*(?:rules?|instructions?|prompts?|guidelines?|safety|filters?|training|limits|restrictions?)\b|\b(?:system|developer) prompt\b|\bjailbreak\b|\bdo anything now\b|\bpretend (?:you are|to be|that you)\b|\byou are now\b|\bwithout (?:any )?(?:rules|filters|restrictions)\b|\bno rules\b|\breveal your (?:prompt|instructions)\b/ },
   { tier: "sensitive", cat: "unclear", key: "feelings", reason: "The child may be sad, scared or in pain. A teacher should check in.", re: /\b(?:i|i am|i feel|feel|feeling|why am i|why do i feel|why do i get)\b[^.?!]{0,14}\b(?:sad|lonely|unhappy|depressed|crying|upset|worthless|useless|stupid|ugly|worried|anxious|nervous|scared|afraid|frightened|terrified|angry all)\b|\b(?:nobody|no one) (?:likes|loves|cares about|wants|plays with) me\b|\bdo not want to go to school\b/ },
   { tier: "sensitive", cat: "unclear", key: "feelings", reason: "The child mentions pain or a secret about themselves.", re: /\b(?:my|i)\b[^.?!]{0,20}\b(?:hurt|hurts|hurting|pain|painful|ache|aches|sore|bleed\w*|bruise\w*|bruised)\b|\b(?:i have|i have got|we have|my) (?:a )?secrets?\b|\bkeep(?:ing)? (?:a |it a )?secret\b/ },
@@ -1989,39 +2023,47 @@ const ANIMALS = /\b(?:cats?|kittens?|lions?|tigers?|foxes|fox|owls?|spiders?|sna
 const HUMANISH = /\b(?:people|person|man|men|woman|women|boy|boys|girl|girls|kid|kids|child|children|grown ups?|adults?|someone|somebody|uncle|aunt\w*|dad|daddy|mum|mummy|mom|mommy|brother|sister|teacher|friend|stranger|bully|bullies|soldiers?|police)\b/;
 const NATURE_ONLY = /\b(?:plants?|flowers?|leaf|leaves|trees?|grass|seeds?|stars?|batter(?:y|ies)|phones?|fires?|candles?|coral|cells?|bacteria|germs|dinosaurs?|bees?|ants?|insects?|bugs?|fish|stars)\b/;
 const PERSONAL = /\b(?:my|our|grandma|grandad|grandpa|nan|nana|gran|granny|mum|dad|mummy|daddy|uncle|aunt|auntie|friend|pet|hamster|dog|cat|rabbit|fish|goldfish|people|person|we|humans?|someone|everyone)\b/;
-/* Everyday phrases that hold a risk word but are not about the child: a secret recipe, being scared of spiders. They can only lower "risk" to "sensitive", never to "safe". */
-const EVERYDAY = [
-  [/\bsecret (?:recipes?|gardens?|agents?|codes?|handshakes?|languages?|ingredients?|santa|passages?|tunnels?|hideouts?|bases?|treasures?|doors?|clubs?)\b/g, "secretx"],
-  [/\b(?:scared|afraid|frightened|terrified|nervous|worried) (?:of|about) (?:the )?(?:dark|spiders?|snakes?|dogs?|bugs?|insects?|thunder|lightning|storms?|heights|flying|clowns?|ghosts?|monsters?|needles?|injections?|jabs?|balloons?|wasps?|bees?|mice|mouse|rats?|sharks?|fireworks?|cats?|horses?|cows?|birds?|tests?|exams?|spelling|swimming)\b/g, "wary x"]
-];
-/* The wide net under the risk rules. A worry word with the child ("me", "my", "I") or with a family member or other person in the words means a teacher should look, even when no risk rule fired. */
-const WORRY = new RegExp("\\b(?:touch\\w*|kiss\\w*|tickl\\w*|naked|nude|private|privates|secrets?|baths?|bathing|hurt\\w*|hit|hits|hitting|beaten|beats? (?:me|us|him|her|them)|slap\\w*|smack\\w*|punch\\w*|kick\\w*|bruis\\w*|scared|afraid|frightened|terrified|alone|hungry|starv\\w*|drunk|locked|locks?|shout\\w*|yell\\w*|scream\\w*|cry|cries|crying|police|die|dies|died|dying|dead|death|kill\\w*|punish\\w*|threat\\w*|choke\\w*|strangle\\w*)\\b|\\b(?:photos?|pictures?|pics?|videos?|selfies?) of (?:me|us|my)\\b|\\bbed\\b[^.?!]{0,15}\\bnight\\b|\\bnight\\b[^.?!]{0,15}\\bbed\\b");
-const SURPRISE = /\b(?:surprise|party|presents?|birthday|christmas|gifts?)\b/;
-const SELFKIN = new RegExp(`\\b(?:i|me|my|mine|myself|we|us|our|ourselves|${KINW}|someone|somebody|nobody|everyone|stranger)s?\\b`);
-function runRules(t) {
-  const ss = t.split(/[.?!;\n]+/).map((x) => " " + x.trim() + " ");
-  let best = { tier: "safe", category: "none", reason: "", key: "" };
-  const human = HUMANISH.test(t), animal = ANIMALS.test(t);
-  for (const r of RULES) {
-    if (TIER_RANK[r.tier] <= TIER_RANK[best.tier]) continue;
+function topicOf(t) {
+  const ss = sentencesOf(t), human = HUMANISH.test(t), animal = ANIMALS.test(t);
+  let best = null;
+  for (const r of TOPIC_RULES) {
     if (!(r.test ? r.test(t, ss) : r.re.test(t))) continue;
     if (r.soft && animal && !human) continue; /* cats kill mice: a food chain, not violence */
-    if (r.death && NATURE_ONLY.test(t) && !PERSONAL.test(t.replace(/\bpeople\b/g, ""))) continue; /* plants and stars "die": not about a person or a pet */
-    best = { tier: r.tier, category: r.cat, reason: r.reason, key: r.key || "" };
+    if (r.death && NATURE_ONLY.test(t) && !PERSONAL.test(t.replace(/\bpeople\b/g, ""))) continue; /* plants and stars "die" */
+    if (!best) best = { category: r.cat, reason: r.reason, key: r.key || "" };
   }
   return best;
 }
+/* a capitalised word in the middle of a sentence is a name */
+const STARTERS = new Set("why how what where when who which whose whom is are was were do does did can could will would should shall may might must have has had my our your his her their its the a an i if so and but or because there this that these those it he she they we you please tell show let now then also just maybe sometimes always never every each some any all most many much more other another one two three four five six seven eight nine ten first last next after before while since until once about from into over under with without yes no ok okay hello hi hey wow oh can't don't isn't aren't i'm i'll i've i'd explain describe give make say find help what's who's where's how's that's it's there's here's let's".split(" "));
+function hasCapName(raw) {
+  let start = true;
+  for (const x of String(raw).split(/\s+/)) {
+    const c = x.replace(/[^A-Za-z']/g, "");
+    if (/^[A-Z][a-z]{2,}$/.test(c)) { const lw = c.toLowerCase(); if (!start || !(STARTERS.has(lw) || isPerson(lw))) return true; }
+    start = /[.?!]["”')\]]*$/.test(x);
+  }
+  return false;
+}
+/* a PERSON word and a WORRY word anywhere in the same question */
+function netOf(t, name) {
+  const ws = wordsOf(t); let person = name || /\[name\]/.test(t), worry = null;
+  for (const w of ws) { if (!person && isPerson(w)) person = true; if (!worry && WORRY_KIND.has(w)) worry = WORRY_KIND.get(w); if (person && worry) break; }
+  if (!worry) for (const k of WPH_KIND) if (WPH[k].test(t)) { worry = k; break; }
+  return person && worry ? worry : null;
+}
+const NET_WORD = { harm: "hurting", body: "touching or the body", secret: "secrets or threats", neglect: "being alone, hungry or locked in", fear: "fear or anger", substance: "drink, drugs or medicine", self: "feeling bad about themselves", online: "someone online" };
 function localCheck(text) {
-  const t = normText(text);
+  const raw = String(text ?? "").slice(0, 500);
+  const t = mendText(normText(raw));
   if (!/[a-z]{2}/.test(t)) return { tier: "sensitive", category: "unclear", reason: "The question is empty, unreadable or in another language.", key: "unclear" };
-  let r = runRules(t);
-  /* an everyday phrase may take "risk" down to "sensitive", and no further */
-  let t2 = t; for (const [re, to] of EVERYDAY) t2 = t2.replace(re, to);
-  if (r.tier === "risk") t2 = t2.split(/[.?!;\n]+/).map((x) => (SURPRISE.test(x) && !CONSEQ.test(x) ? " " : x)).join(". "); /* "do not tell her about the surprise party": not a threat, but still a secret */
-  if (r.tier === "risk" && t2 !== t) { const r2 = runRules(t2); if (r2.tier !== "risk") r = { tier: "sensitive", category: r2.category !== "none" ? r2.category : "unclear", reason: "An everyday phrase was found, but the words also mention something a teacher may want to check.", key: "" }; }
-  /* nothing with a worry word beside the child or a person comes out safe */
-  if (r.tier === "safe" && (/\bno (?:food|dinner|breakfast)\b/.test(t) || (WORRY.test(t) && SELFKIN.test(t)))) r = { tier: "sensitive", category: "unclear", reason: "The words mention something a teacher may want to check.", key: "net" };
-  return r;
+  const name = hasCapName(raw);
+  const r = riskOf(t, name);
+  if (r) return { tier: "risk", category: r[0], reason: r[1], key: "" };
+  const topic = topicOf(t), net = netOf(t, name);
+  if (topic) return { tier: "sensitive", category: topic.category, reason: topic.reason, key: topic.key };
+  if (net) return { tier: "sensitive", category: "unclear", reason: `A person and a word about ${NET_WORD[net]} are in the same question. A teacher may want to talk with the child.`, key: "net" };
+  return { tier: "safe", category: "none", reason: "", key: "" };
 }
 
 /* the AI classifier (a separate quick call). Its answer can only raise the tier set by the local check. */
@@ -2072,7 +2114,7 @@ async function screen(clean, raw, age, ctl = null) {
   const source = ai.tier === local.tier ? "both" : win === ai ? "ai" : "local";
   return { tier: win.tier, category: win.category !== "none" ? win.category : local.category !== "none" ? local.category : ai.category, reason: win.reason || local.reason || ai.reason, key: local.key, source, ranWithoutAI: false };
 }
-if (location.hash === "#test") window.__safety = { scrub, localCheck, hits: (text) => { const t = normText(text), ss = t.split(/[.?!;\n]+/).map((x) => " " + x.trim() + " "); return RULES.map((r, i) => (r.test ? r.test(t, ss) : r.re.test(t)) ? `${i}:${r.reason.slice(0, 50)}` : null).filter(Boolean); }, screen: (text, age) => screen(scrub(text).text, text, age || "7–9") }; /* for tests only */
+if (location.hash === "#test") window.__safety = { scrub, localCheck, mendWord: mend, lexicon: [...WORRY_KIND.keys()], notMended: [...NOT_MENDED], isPerson, mended: (text) => mendText(normText(text)), screen: (text, age) => screen(scrub(text).text, text, age || "7–9") }; /* for tests only */
 
 /* ---------- alerts: what a child's page writes, and what stays on the tablet if it can't ---------- */
 const OPEN = ["new", "seen", "talked"];
@@ -2394,7 +2436,7 @@ function renderAsk(prefill) {
   const ta = el("textarea", { id: "q", rows: "2", placeholder: "I wonder…", "aria-label": "Your question" });
   ta.value = prefill ?? state.question;
   const status = el("p", { class: "status", id: "askStatus" });
-  const go = el("button", { class: "btn", type: "button", text: "Write my book", onclick: () => start(ta.value.trim(), status) });
+  const go = el("button", { class: "btn", type: "button", id: "goBtn", text: "Write my book", disabled: sending.size > 0, onclick: () => start(ta.value.trim(), status) }); /* off while a book is still on its way to a teacher */
   const ageSeg = el("div", { class: "seg", role: "group", "aria-label": "Age" }, AGE_BANDS.map((a) =>
     el("button", { type: "button", "aria-pressed": String(state.age === a), text: a, onclick: (e) => { state.age = a; ageSeg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget))); } })));
   const ideas = ["Why do cats purr?", "Where does the wind come from?", "Why is the sea salty?", "How do bees know where flowers are?"];
@@ -2471,7 +2513,8 @@ async function start(rawQ, status, opt = {}) {
   await capsReady; await Store.ready.catch(() => {});
   let q = rawQ, scrubbed = false;
   if (!rel) {
-    const sc = scrub(rawQ); q = sc.text; scrubbed = sc.changed; /* the words as typed are never kept: only the scrubbed text goes on */
+    const sc = scrub(rawQ); q = sc.text; scrubbed = sc.changed;
+    if (isSending(q)) { renderAsk(q); $("#askStatus").textContent = "Your book is still on its way to your teacher. Please wait a moment."; return; } /* the first copy is still being written: no second one */ /* the words as typed are never kept: only the scrubbed text goes on */
     state.question = q;
     const a = localCheck(rawQ), b = localCheck(q), local = TIER_RANK[b.tier] > TIER_RANK[a.tier] ? b : a;
     if (local.tier !== "safe") { /* a flagged question never waits for the AI: the alert goes first, and the AI can only raise it afterwards */
@@ -2512,12 +2555,17 @@ async function start(rawQ, status, opt = {}) {
     $("#askStatus").textContent = msg;
   } finally { clearInterval(loadTimer); }
 }
+const sending = new Map(); /* questions whose book is still being sent to a teacher, in memory only */
+const sendKey = (q) => String(q).toLowerCase().replace(/\s+/g, " ").trim();
+const isSending = (q) => { const t = sending.get(sendKey(q)); return !!t && Date.now() - t < 60000; }; /* a write that never settles stops counting after a minute */
 const NEED_TEACHER = "A teacher needs to check new books. Ask your teacher to sign in on this tablet.";
 async function viewerIsTeacher() { try { return !!(userCap && (await userCap.canEdit())); } catch { return false; } }
 /* the child's new book goes to a teacher. Nothing says it was sent unless the write resolved. */
 async function submitBook(book, q) {
   let timer; const timeout = new Promise((r) => { timer = setTimeout(() => r({ ok: false, late: true }), REVIEW_WAIT); });
+  const key = sendKey(q); sending.set(key, Date.now());
   const attempt = sendForReview(book, q, state.age).catch(() => ({ ok: false }));
+  attempt.then(() => { sending.delete(key); const g = $("#goBtn"); if (g) g.disabled = sending.size > 0; });
   const res = await Promise.race([attempt, timeout]); clearTimeout(timer);
   if (!res.ok) {
     renderAsk(q); $("#askStatus").textContent = "Pip wrote your book, but it could not be sent to your teacher just now. Please try again in a little while.";
@@ -3039,34 +3087,50 @@ async function renderBanners() {
 }
 function updateTeacherBtn() {
   const b = $("#teacherBtn"); b.hidden = !Teacher.is;
-  const n = Teacher.open + Teacher.books.length; /* open safety alerts and books waiting to be checked */
+  const n = Teacher.open + Teacher.books.length + Teacher.held.length; /* open safety alerts, books waiting to be checked, and books held without an alert */
   b.textContent = n > 0 ? `Teacher (${n})` : "Teacher";
-  b.setAttribute("aria-label", n > 0 ? `Teacher inbox, ${[Teacher.open ? plural(Teacher.open, "open alert") : "", Teacher.books.length ? plural(Teacher.books.length, "book") + " to check" : ""].filter(Boolean).join(" and ")}` : "Teacher inbox");
+  b.setAttribute("aria-label", n > 0 ? `Teacher inbox, ${[Teacher.open ? plural(Teacher.open, "open alert") : "", Teacher.books.length ? plural(Teacher.books.length, "book") + " to check" : "", Teacher.held.length ? plural(Teacher.held.length, "book") + " held without an alert" : ""].filter(Boolean).join(" and ")}` : "Teacher inbox");
 }
 /* Every child's own items are read, not just the children whose summary says something is open: a summary can be overwritten by a teacher's write. */
+/* every child the page knows from an alert OR a book: a summary that failed to write must not hide an item */
+Teacher.childIds = async function () {
+  const ids = new Set();
+  for (const d of (await dbCap.collection("flags").get()).docs) ids.add(d.id);
+  try { for (const d of (await dbCap.collection("reviews").get()).docs) ids.add(d.id); } catch {}
+  return ids;
+};
 Teacher.readAll = async function (all) {
-  const rows = [], snap = await dbCap.collection("flags").get();
-  for (const d of snap.docs) {
-    const it = await dbCap.collection(`flags/${d.id}/items`).get();
-    for (const x of it.docs) { const v = x.data(); if (!v || typeof v !== "object" || v.tier === "test") continue; if (!all && !OPEN.includes(v.status)) continue; rows.push({ ...v, cid: d.id, id: x.id }); }
+  const rows = [], ids = await this.childIds();
+  for (const cid of ids) {
+    let it; try { it = await dbCap.collection(`flags/${cid}/items`).get(); } catch { continue; }
+    for (const x of it.docs) { const v = x.data(); if (!v || typeof v !== "object" || v.tier === "test") continue; if (!all && !OPEN.includes(v.status)) continue; rows.push({ ...v, cid, id: x.id }); }
   }
   return rows;
 };
 /* The books that wait for a teacher, oldest first. Every child's own items are read, as for alerts, and only a pending one is listed. */
+Teacher.held = [];
 Teacher.readReviews = async function () {
-  const rows = [], ids = new Set();
+  const rows = [], held = [], ids = new Set();
   for (const d of (await dbCap.collection("reviews").get()).docs) ids.add(d.id);
   try { for (const d of (await dbCap.collection("flags").get()).docs) ids.add(d.id); } catch {} /* a child whose review summary was never written may still be known from an alert */
   for (const cid of ids) {
     let it; try { it = await dbCap.collection(`reviews/${cid}/items`).get(); } catch { continue; }
-    for (const x of it.docs) { const v = x.data(); if (!v || typeof v !== "object" || v.status !== "pending") continue; rows.push({ ...v, cid, id: x.id }); }
+    for (const x of it.docs) {
+      const v = x.data(); if (!v || typeof v !== "object") continue;
+      if (v.status === "pending") rows.push({ ...v, cid, id: x.id });
+      else if (v.status === "declined") { /* held back by a teacher who raised an alert: is there an alert? */
+        let has = false; if (v.flagId) { try { has = (await dbCap.doc(`flags/${cid}/items/${v.flagId}`).get()).exists; } catch { has = true; } } /* a read that failed is not "no alert" */
+        if (!has) { let nt = {}; try { const sn = await noteRef(cid, x.id).get(); if (sn.exists) nt = sn.data() || {}; } catch {} held.push({ ...v, cid, id: x.id, itemFlagId: v.flagId || null, savedNote: strOf(nt.teacherNote, "", 300), savedTier: nt.raiseTier === "risk" ? "risk" : "sensitive" }); }
+      }
+    }
   }
   rows.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  this.held = held.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   return rows;
 };
 Teacher.loadBooks = async function () {
   try { this.books = await this.readReviews(); } catch { return false; }
-  try { const ids = [...new Set(this.books.map((r) => r.cid))].filter((i) => !own(this.names, i)); if (ids.length && userCap) Object.assign(this.names, await userCap.profiles(ids)); } catch {}
+  try { const ids = [...new Set(this.books.concat(this.held).map((r) => r.cid))].filter((i) => !own(this.names, i)); if (ids.length && userCap) Object.assign(this.names, await userCap.profiles(ids)); } catch {}
   return true;
 };
 Teacher.refresh = async function () { /* the count on the button and the urgent banner */
@@ -3146,53 +3210,70 @@ function flagRow(r, onDone) {
   return row;
 }
 /* a teacher's decision on a book: who and why go to the admin-only notes, and only the status goes on the child's own item */
-async function bookAct(r, status, note) {
+async function bookAct(r, status, note, extra = {}) {
   /* read the item again first: another teacher may have approved or sent it back, and the child's page may have copied it already */
   let cur; try { cur = await dbCap.doc(`reviews/${r.cid}/items/${r.id}`).get(); } catch { return { ok: false }; }
   if (!cur.exists || (cur.data() || {}).status !== "pending" || (cur.data() || {}).delivered) return { ok: false, already: true };
-  if (!(await noteWrite(r.cid, r.id, { teacherNote: note, handledAt: Date.now(), handledBy: Store.uid || null, status, title: strOf(r.title, "", 120) }))) return { ok: false };
-  const ok = await dbTry(() => dbCap.doc(`reviews/${r.cid}/items/${r.id}`).update({ status, [status === "approved" ? "approvedAt" : status === "sent_back" ? "sentBackAt" : "heldAt"]: Date.now() }));
+  if (!(await noteWrite(r.cid, r.id, { teacherNote: note, handledAt: Date.now(), handledBy: Store.uid || null, status, title: strOf(r.title, "", 120), ...(extra.note || {}) }))) return { ok: false };
+  const ok = await dbTry(() => dbCap.doc(`reviews/${r.cid}/items/${r.id}`).update({ status, [status === "approved" ? "approvedAt" : status === "sent_back" ? "sentBackAt" : "heldAt"]: Date.now(), ...(extra.item || {}) }));
   if (ok) await summariseReviews(r.cid);
   return { ok };
 }
 /* A teacher who sees a worrying question the checks missed raises it as a safety alert. The book is held first (the child's shelf then says the teacher would like to talk, and the book is never delivered), then the alert is written to flags, as a child's own alert would be. */
 async function raiseFromBook(r, tier, note) {
-  if (!r.held) {
-    const h = await bookAct(r, "declined", note);
+  const fid = r.flagId || r.itemFlagId || ("f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); r.flagId = fid;
+  if (!r.held) { /* the id of the alert goes on the book with the hold, so a retry after a failure writes the same alert */
+    const h = await bookAct(r, "declined", note, { item: { flagId: fid }, note: { raiseTier: tier } });
     if (h.already) return { already: true };
     if (!h.ok) return { ok: false, step: "hold" };
-    r.held = true;
+    r.held = true; r.itemFlagId = fid;
   }
-  const fid = r.flagId || ("f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); r.flagId = fid;
   const item = { tier, category: "unclear", reason: "A teacher raised this from a new book that was waiting to be checked.", question: strOf(r.question, "", 500), age: r.age ?? null, createdAt: Date.now(), status: "new", source: "teacher" };
   if (!(await dbTry(() => dbCap.doc(`flags/${r.cid}/items/${fid}`).set(item)))) return { ok: false, step: "flag" };
   if (!(await noteWrite(r.cid, fid, { teacherNote: note, raisedAt: Date.now(), raisedBy: Store.uid || null }))) return { ok: false, step: "flag" };
   if (!(await summarise(r.cid))) return { ok: false, step: "flag" };
+  if (!r.itemFlagId) await dbTry(() => dbCap.doc(`reviews/${r.cid}/items/${r.id}`).update({ flagId: fid })); /* an older hold with no alert id */
   return { ok: true };
 }
+/* the form for "Raise as a safety alert": a tier and a short note. The button is off while it saves, so a second press cannot start a second save. */
+function raiseBoxFor(r, onDone, { again = false } = {}) {
+  const tierSel = el("select", { "data-field": "raise-tier", "aria-label": "How serious" }, el("option", { value: "risk", text: "Risk (urgent)" }), el("option", { value: "sensitive", text: "Sensitive (a teacher chat)" }));
+  tierSel.value = r.savedTier || "risk";
+  const rNote = el("input", { type: "text", maxlength: "300", "data-field": "raise-note", "aria-label": "Why you are raising this", placeholder: "A short note. The child does not see it." });
+  rNote.value = r.savedNote || "";
+  const rMsg = el("p", { class: "status", role: "status" });
+  const go = el("button", { class: "btn small", type: "button", "data-act": "raise-confirm", text: again ? "Raise again" : "Raise the alert", onclick: async () => {
+    const t = rNote.value.trim(); if (!t) { rMsg.textContent = "Add a short note first."; rNote.focus(); return; }
+    go.disabled = true; rMsg.textContent = "Saving…";
+    let res; try { res = await raiseFromBook(r, tierSel.value, t); } catch { res = { ok: false }; }
+    if (res.already) onDone("Already handled. This book has already been dealt with, so no alert was raised.");
+    else if (res.ok) onDone(`Raised as a ${tierSel.value === "risk" ? "risk" : "sensitive"} safety alert. The book is held back, and the child’s bookshelf says you would like to talk about it.`);
+    else { rMsg.textContent = res.step === "flag" || r.held ? "The book is held back, but the safety alert could not be saved. It is listed under Safety alerts as held without an alert. Press the button again to try the alert again." : "That could not be saved. Nothing was changed. Check the connection and try again."; go.disabled = false; }
+  } });
+  return el("div", { class: "raisebox", "data-raise": "1", hidden: !again },
+    el("p", { class: "label", text: again ? "This book is held back and the child’s shelf says you would like to talk about it, but its safety alert was not saved. Raise it again." : "This holds the book back for ever, tells the child you would like to talk about it, and adds a safety alert above. Follow your school’s child protection procedure." }),
+    el("div", { class: "row" }, tierSel, rNote),
+    el("div", { class: "row" }, go, again ? null : el("button", { class: "btn small ghost", type: "button", text: "Cancel", onclick: (e) => { e.currentTarget.closest(".raisebox").hidden = true; } })),
+    rMsg);
+}
 let bookRowN = 0;
+/* a book held back by "Raise as a safety alert" whose alert was never saved: it stays on the screen until the alert exists */
+function heldRow(r, onDone) {
+  r.held = true;
+  return el("article", { class: "flag-row", "data-held-noalert": r.id, "data-cid": r.cid, "data-tier": "held" },
+    el("div", { class: "flag-head" },
+      el("span", { class: "tierchip risk", text: "Held without an alert" }),
+      el("b", { class: "fcat", text: "Raise again" }),
+      el("span", { class: "fwho", text: pupilLabel(r.cid, Teacher.names, r.createdAt) }),
+      el("span", { class: "label", text: `Ages ${r.age || "unknown"} · ${fmtTime(r.createdAt)}` })),
+    el("div", { class: "fq" }, el("b", { text: "The child asked: " }), el("span", { text: strOf(r.question, "(the question was not kept)", 500) })),
+    raiseBoxFor(r, onDone, { again: true }));
+}
 function bookRow(r, onDone) {
   const nm = pupilLabel(r.cid, Teacher.names, r.createdAt), pfx = `rv${++bookRowN}-`;
   const detail = el("div", { class: "flag-detail", hidden: true });
   let built = false;
-  /* "Raise as a safety alert": a tier and a short note. The note goes to the admin-only notes. */
-  const tierSel = el("select", { "data-field": "raise-tier", "aria-label": "How serious" }, el("option", { value: "risk", text: "Risk (urgent)" }), el("option", { value: "sensitive", text: "Sensitive (a teacher chat)" }));
-  const rNote = el("input", { type: "text", maxlength: "300", "data-field": "raise-note", "aria-label": "Why you are raising this", placeholder: "A short note. The child does not see it." });
-  const rMsg = el("p", { class: "status", role: "status" });
-  const raiseBox = el("div", { class: "raisebox", "data-raise": "1", hidden: true },
-    el("p", { class: "label", text: "This holds the book back for ever, tells the child you would like to talk about it, and adds a safety alert above. Follow your school’s child protection procedure." }),
-    el("div", { class: "row" }, tierSel, rNote),
-    el("div", { class: "row" },
-      el("button", { class: "btn small", type: "button", "data-act": "raise-confirm", text: "Raise the alert", onclick: async () => {
-        const t = rNote.value.trim(); if (!t) { rMsg.textContent = "Add a short note first."; rNote.focus(); return; }
-        rMsg.textContent = "Saving…";
-        const res = await raiseFromBook(r, tierSel.value, t);
-        if (res.already) onDone("Already handled. This book has already been dealt with, so no alert was raised.");
-        else if (res.ok) onDone(`Raised as a ${tierSel.value === "risk" ? "risk" : "sensitive"} safety alert. The book is held back, and the child’s bookshelf says you would like to talk about it.`);
-        else rMsg.textContent = res.step === "flag" ? "The book is held back, but the safety alert could not be saved. Press the button again to try the alert again." : "That could not be saved. Nothing was changed. Check the connection and try again.";
-      } }),
-      el("button", { class: "btn small ghost", type: "button", text: "Cancel", onclick: () => { raiseBox.hidden = true; } })),
-    rMsg);
+  const raiseBox = raiseBoxFor(r, onDone);
   const build = () => {
     built = true;
     const book = validBook(r.book, r.age);
@@ -3228,6 +3309,35 @@ function bookRow(r, onDone) {
       el("button", { class: "btn small ghost", type: "button", "data-act": "raise-open", text: "Raise as a safety alert", onclick: () => { raiseBox.hidden = !raiseBox.hidden; if (!raiseBox.hidden) $("[data-field=raise-note]", raiseBox).focus(); } })),
     detail);
 }
+/* "Try the safety check": for a teacher to test the checks with real examples. It writes nothing: no alert, no flag, no shelf, no storage. */
+function tryBox() {
+  if (!Teacher.is) return null;
+  const text = el("textarea", { id: "tryText", rows: "2", maxlength: "500", "aria-label": "Words to try", placeholder: "Type a question to see how the safety check treats it" });
+  const out = el("div", { id: "tryOut", role: "status", "aria-live": "polite" });
+  const go = el("button", { class: "btn small teal", type: "button", id: "tryGo", text: "Try the check", onclick: async () => {
+    const raw = text.value.slice(0, 500);
+    if (!raw.trim()) { out.replaceChildren(el("p", { text: "Type some words first." })); return; }
+    go.disabled = true;
+    const clean = scrub(raw).text, a = localCheck(raw), b = localCheck(clean), local = TIER_RANK[b.tier] > TIER_RANK[a.tier] ? b : a;
+    const lp = el("p", { id: "tryLocal", text: `Local check: ${local.tier}${local.category !== "none" ? " · " + (CAT_WORD[local.category] || local.category) : ""}. ${local.reason || "Nothing was found."}` });
+    const ap = el("p", { id: "tryAi", text: sampleFn ? "AI check: asking…" : "AI check: not available. It needs this page open in Claude." });
+    out.replaceChildren(lp, ap);
+    if (sampleFn) {
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
+      try {
+        const ai = await aiClassify(clean, state.age, ctl.signal);
+        ap.textContent = `AI check: ${ai.tier}${ai.category !== "none" ? " · " + (CAT_WORD[ai.category] || ai.category) : ""}. ${ai.reason || ""}`;
+        const top = TIER_RANK[ai.tier] > TIER_RANK[local.tier] ? ai.tier : local.tier;
+        out.append(el("p", { id: "tryBoth", text: `A child who asked this would be treated as: ${top} (the higher of the two).` }));
+      } catch (e) { ap.textContent = `AI check: no answer (${e?.code || "error"}).`; }
+      finally { clearTimeout(timer); }
+    }
+    go.disabled = false;
+  } });
+  return el("section", { class: "setup", id: "tryCheck", "aria-labelledby": "tryH" }, el("h3", { id: "tryH", text: "Try the safety check" }),
+    el("p", { class: "label", text: "Type a question as a child might. It shows what the local check decides and, when this page is open in Claude, what the AI check decides." }),
+    text, el("div", { class: "row" }, go), out, el("p", { class: "label", id: "tryCaption", text: "For testing only. Nothing is saved." }));
+}
 async function renderTeacher(msg = "") {
   setStep("teacher");
   const list = el("div", { class: "inbox", id: "inbox" }, el("p", { class: "label", text: "Loading…" }));
@@ -3241,7 +3351,7 @@ async function renderTeacher(msg = "") {
     el("p", { class: "label", text: "New books that children asked for wait here. A child can read one only after you approve it. Safety alerts always come first." }), bookList);
   setPanel(el("div", { class: "eyebrow", text: "For teachers" }), el("h2", { text: "Teacher inbox" }),
     el("p", { class: "lead", text: "Alerts from children appear here, urgent ones first. This page prompts you. It does not replace your school’s child protection procedure or your DSL." }),
-    dslWarn, status, el("h3", { id: "alertsH", text: "Safety alerts" }), el("label", { class: "row" }, all, el("span", { text: "Show handled alerts too" })), list, books, setup,
+    dslWarn, status, el("h3", { id: "alertsH", text: "Safety alerts" }), el("label", { class: "row" }, all, el("span", { text: "Show handled alerts too" })), list, books, setup, tryBox(),
     el("div", { class: "row" }, el("button", { class: "btn ghost", type: "button", id: "teacherBack", text: "Back to the bookshelf", onclick: () => renderAsk("") })));
   if (!dbCap) { list.replaceChildren(el("p", { text: "The inbox needs this page open in Claude with its database." })); bookList.replaceChildren(); return; }
   const ok = await Teacher.load();
@@ -3267,6 +3377,7 @@ async function renderTeacher(msg = "") {
   if (!okBooks) bookList.replaceChildren(el("p", { class: "warn", text: "The books to check could not be read. Check the connection and open the inbox again." }));
   else if (!Teacher.books.length) bookList.replaceChildren(el("p", { id: "booksEmpty", text: "No books are waiting." }));
   else bookList.replaceChildren(...Teacher.books.map((r) => bookRow(r, done)));
+  if (Teacher.held.length) { if ($("#inboxEmpty", list)) $("#inboxEmpty", list).remove(); list.append(...Teacher.held.map((r) => heldRow(r, done))); } /* under the safety alerts */
   updateTeacherBtn();
 }
 const TEST_WORD = { yes: "Teacher alerts can be written and read back from this teacher account. This doesn’t prove a child’s account can send one. Check with a test pupil account at Contributor level.", no: "A test alert could not be written and read back from this account. Alerts may not reach teachers. Check the sharing level and the connection, then try again." };
