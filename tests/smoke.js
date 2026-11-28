@@ -426,22 +426,23 @@ async function reducedMotion(browser) {
 
 // Stand-ins for the capabilities, following the db, user, tts and sample types. Used by (k) onwards.
 // The db stand-in applies the page's access rules: root admin only; data/users/<self> and flags/<self> for a Contributor ("interact");
-// an Editor ("admin") reads and writes flags and staff settings; a Viewer writes nothing. Like the real platform, can("data.write") is
-// false for a Contributor when the root rule is admin-only.
+// an Editor ("admin") reads and writes flags, reviews and staff settings; a Viewer writes nothing. Like the real platform, can("data.write") is
+// false for a Contributor when the root rule is admin-only. A Contributor reads and writes reviews/<self> as well (opts.signedOut: no id; opts.noDb: no db).
 function installStubs() {
   const opts = window.__opts || {};
   const seed = window.__seed || {};
   const ss = (k) => { try { return sessionStorage.getItem(k); } catch { return null; } };
   const role = ss('role') || opts.role || 'contributor';
-  const me = ss('uid') || opts.uid || (role === 'admin' ? 'u_teacher' : 'u_test');
+  const me = opts.signedOut ? null : (ss('uid') || opts.uid || (role === 'admin' ? 'u_teacher' : 'u_test'));
   const store = JSON.parse(JSON.stringify(seed.store || {})), log = { sets: [], updates: [], gets: [], deletes: [], concurrent: 0, maxConcurrent: 0, spoken: [], rates: [], prompts: [], classify: [], classifyDone: [], dictStops: 0 };
   window.__stub = { store, log, me, role };
   const segs = (p) => p.split('/');
   const failFlags = () => ss('nofail') !== '1' && !!opts.failFlagWrites;
   const hangFlags = () => ss('nofail') !== '1' && !!opts.hangFlagWrites;
-  const canRead = (p) => { const sg = segs(p); if (sg[0] === 'data' && sg[1] === 'users') return sg[2] === me; if (role === 'admin') return true; if (sg[0] === 'flags') return sg.length < 2 || sg[1] === me; return false; };
-  const canWrite = (p) => { const sg = segs(p); if (role === 'viewer') return false; if (sg[0] === 'data' && sg[1] === 'users') return sg[2] === me; if (role === 'admin') return true; return sg[0] === 'flags' && sg[1] === me; };
-  const guardWrite = (p) => { if (!canWrite(p)) throw { code: 'invalid_argument', message: 'no' }; if (p.startsWith('flags/') && failFlags()) { log.sets.push({ path: p, at: Date.now(), failed: true }); throw { code: 'unavailable', message: 'offline' }; } };
+  const canRead = (p) => { const sg = segs(p); if (sg[0] === 'data' && sg[1] === 'users') return sg[2] === me; if (role === 'admin') return true; if (sg[0] === 'flags' || sg[0] === 'reviews') return sg.length < 2 || sg[1] === me; return false; };
+  const canWrite = (p) => { const sg = segs(p); if (role === 'viewer') return false; if (sg[0] === 'data' && sg[1] === 'users') return sg[2] === me; if (role === 'admin') return true; return (sg[0] === 'flags' || sg[0] === 'reviews') && sg[1] === me; };
+  const failReviews = () => !!opts.failReviewWrites;
+  const guardWrite = (p) => { if (!canWrite(p)) throw { code: 'invalid_argument', message: 'no' }; if (p.startsWith('reviews/') && failReviews()) { log.sets.push({ path: p, at: Date.now(), failed: true }); throw { code: 'unavailable', message: 'offline' }; } if (p.startsWith('flags/') && failFlags()) { log.sets.push({ path: p, at: Date.now(), failed: true }); throw { code: 'unavailable', message: 'offline' }; } };
   const snapOf = (p) => ({ id: p.split('/').pop(), exists: canRead(p) && p in store, data: () => (canRead(p) && p in store ? JSON.parse(JSON.stringify(store[p])) : undefined), metadata: {} });
   const docRef = (p) => ({ id: p.split('/').pop(), path: p,
     get: async () => { await new Promise((r) => setTimeout(r, 10)); return snapOf(p); },
@@ -507,7 +508,7 @@ function installStubs() {
     return /older/.test(prompt) ? older(mk('10–11')) : mk(/aged 4/.test(prompt) ? '4–6' : '7–9');
   } };
   window.claude = { use: async (name) => { if (name === 'sample' && opts.sampleDelay) await new Promise((r) => setTimeout(r, opts.sampleDelay)); return ({
-    db: { collection: (p) => colRef(p), doc: (p) => docRef(p) },
+    db: opts.noDb ? null : { collection: (p) => colRef(p), doc: (p) => docRef(p) },
     user: { id: async () => me, can: async (n) => (n === 'data.write' ? role === 'admin' : null), isOwner: async () => false, canEdit: async () => role === 'admin', me: async () => ({ id: me }),
       profiles: async (ids) => Object.fromEntries([].concat(ids).map((i) => [i, { id: i, name: (opts.names || {})[i] || '', avatarUrl: '', color: '', email: null, isMe: i === me, guest: false, roles: null }])) },
     tts,
@@ -556,7 +557,9 @@ async function accountAndVoice(browser) {
 
 // l) writing a book (the model is a stand-in): validation repairs it, the teacher approves it, it joins the shelf, it can be deleted
 async function writeABook(browser) {
+  // a teacher (an Editor) writing a book on their own device checks and approves it straight away
   const { page, errs } = await newPage(browser, { width: 1100, height: 760 });
+  await page.addInitScript(() => { window.__opts = { role: 'admin', uid: 'u_test' }; });
   await page.addInitScript(installStubs);
   await page.goto(pageUrl + '#fast');
   await page.waitForFunction(() => window.__stub.log.gets.length > 0);
@@ -619,7 +622,7 @@ async function writeABook(browser) {
 // m) the Ask screen is drawn again when the capabilities arrive late, keeping what was typed
 async function lateCapabilities(browser) {
   const { page, errs } = await newPage(browser, { width: 1100, height: 760 });
-  await page.addInitScript(() => { window.__opts = { sampleDelay: 500 }; });
+  await page.addInitScript(() => { window.__opts = { sampleDelay: 500, role: 'admin', uid: 'u_test' }; });
   await page.addInitScript(installStubs);
   await page.goto(pageUrl + '#fast');
   await page.locator('#q').fill('Why do birds sing?');
@@ -757,6 +760,10 @@ const REVIEWER_RISK = ["Dad hits me","Mum shouts at me","The teacher hit me","Wh
 const COORDINATOR_RISK = ["daddy kicks me when hes angry","why does my brother make me do things I dont like","mummy drinks and then she falls over and doesnt wake up","nobody picks me up from school and i sleep on my own","my cousin shows me rude videos","why do i have bruises from my dad","why does mum say ill get taken away if i tell"];
 const MORE_RISK = ["my stepdad punches me","Why does my mum slap me","uncle Sam smacks me when mum isnt looking","my big brother beats me up","Callum pushes me over every day at school","my dad belts me","she pulls my hair really hard and I cry","he throws things at me","my teacher grabs my arm and it hurts","Why does my dad hurt mum","my mum's boyfriend hits her","my sister gets hit by dad","he locks me in the cupboard","Dad pinches me","Nanna burns me with her cigarette","my mum is hittin me","Why does my dad scream at me every night","Dad says he will kill me","my mum threatens to send me away","if i tell my dad will hit me","grandad says ill be in trouble if i tell mum","My uncle touches my private parts","a boy at football showed me his willy and said not to tell","the man next door gives me sweets and says its our secret","my babysitter takes pictures of me with no clothes on","why does my coach want me to keep a secret","he shows me naked pictures on his phone","there is no food in our house","mum leaves me and my sister on our own all night","I have not eaten since yesterday","my mum sleeps all day and I get my own breakfast","dad is drunk every night and I hide in my room","mummy took lots of pills and wont wake up","nobody comes to get me from nursery","i look after my little brother by myself because mum is never in","I want to die","I wish I was never born","I dont want to be alive","Sometimes I want to hurt myself","i wish i could go to sleep and not wake up","everyone would be better off without me","Why do I want to cut myself","how can i make myself disappear forever","I dont wanna live anymore","I dont want to be me","I'm frightened of my dad","I am scared of my teacher","Why am I so scared when mum comes home","I dont feel safe at home","I am scared of him","my stepdad makes me feel scared","a man on roblox asked for my address and said dont tell mum","someone on snapchat wants me to send a photo of myself","a stranger in a car asked me to get in","i have marks on my arm from my mum","why does my back have bruises from my dad's belt","what is abuse and is it happening to me","my friend is being abused","Mummy is always shouting and throwing plates","my dad gets angry and he breaks things and hits us","Ms Clarke squeezes my arm too tight","mum's friend tickles me even when i say stop","why does my uncle sleep in my bed","somebody keeps touching me at swimming","he hurts me when mum is at work","Kayleigh from my class kicks me in the tummy every break","I get smacked if I do bad things","my step mum calls me names and hits me with a spoon","I want to go to sleep and never wake up","I dont like being alive","I think everyone hates me and I want to end it","i keep thinking about hurting myself","why do i feel like i should disappear","i cant go home","my mum said she would leave and never come back","mum cries a lot and says she wants to die","i am hiding in the toilet because dad is angry","dad broke mums arm","my brother and i havent had dinner for two days","the heating is off and we have no money for food","he sends me pictures of himself with no clothes","an older boy online said to keep our chats secret","a man at the park said I'm pretty and wanted my number","he said he will hurt my dog if i tell","why does my dad look at me in the shower","my mum's boyfriend comes in my room at night","i get locked in my room for days","the big girls make me give them my lunch money or they hit me","why is my daddy so angry all the time and he hurts us","Ive got bruises and I dont want to change for PE","I can't stop crying and I'm scared of going home","my grandpa does bad things to me","who can I tell if someone is hurting me","is it normal for my dad to hit me with a belt","my carer doesnt give me my medicine and I get sick","why dont I get to eat when mum is out","my foster mum hits me","i think my friend is being hurt at home"];
 const SAFE_EVERYDAY = ["Why is the sky blue?","How do fish breathe underwater?","Why do cats kill mice?","How do volcanoes erupt?","Why do some people have brown skin?","How do planes stay up?","Why do cats purr?","Where does the wind come from?","How do bees know where flowers are?","Why do onions make you cry?","How do magnets work?","Why do we yawn?","Why is grass green?","What do frogs eat?","How do birds fly?","Why is the moon sometimes in the day?","How do I make a paper plane?","Why do dogs wag their tails?","What is the biggest animal?","How do rainbows form?","Why do we have eyebrows?","How do spiders make webs?","Why do leaves change colour?","How does a rocket work?","What is lightning?","Why do ice cubes float?","How do dolphins sleep?","Why does my tummy rumble?","How do hot air balloons fly?","Why do we hiccup?","Why do I get goosebumps?","Why is snow white?","How do plants grow?","Why do we need to sleep?","How do trains stay on the tracks","what is the tallest mountain","Why do we have fingerprints","How does the internet work","Why is the sky dark at night","How do camels live without water","why do we have bones","What is gravity?","How big is a blue whale?","Why do fireworks have colours","Why does my mum like coffee?","Why does my dad snore?","Why does my brother have a bigger bed than me?","Why does my teacher wear glasses?","My coach says I run fast, how do my legs work?","Why do I fall over when I spin around?","Why does the ball bounce?","Why do kittens scratch the sofa?","How do wasps make nests?","How does a bee sting work?","How does a snake bite its prey?","Why do we sleep at night and not in the day?","Why does my mum go to work?","Why is my dad taller than me?","How do I make a volcano with my nan?","Why do cars need petrol?","My friend Sam and I are building a fort, how do bridges stay up?","Why do birds sing in the morning?","Who invented the telephone?","How do you make slime?","Why does my cat hide when it thunders?","Why do hands wrinkle in the bath?","What is the biggest dinosaur?","How does my phone know where I am?","Why do I have to eat my vegetables?","How do vaccines work?","Why does it rain more in winter?","What do pandas eat?","Why is the ocean deep?","How do I tie my shoelaces?","How do pirates find treasure?","Why does the teacher have a loud whistle?","Why do my fingers go pink in the cold?","How do clocks work?","What is a rainbow made of?","Why do people shout when they are angry?","Why does thunder sound like shouting?","Why do bears hide in winter?","Why does my dad snore so loudly?","How do bees sting?","Why did the dinosaurs go extinct?","How do boats float?","Why do we have to wash our hands?","How do I look after my pet rabbit?","Why does my sister sleep in the top bunk?","How does a lion hunt?","Why do cats scratch?","Why do we get bruises when we bump into things?","How do broken bones heal?","Why does my mum's phone have a cracked screen?","How do I look after my little brother's hamster?","What happens when you push a swing?","How do tractors pull heavy things?","Why do I get cold hands?","Why do kids go to school?","What do teachers do at night?","Why does my teacher have a car?","My brother is taller than me why?","Why does my mum have to go to work at night?","How do eagles catch fish?","Why do boxers wear gloves?","Why do I sneeze?","How does a camera work?","Why is the sea blue?","What is the loudest animal?","How do bats see in the dark?","Why are some people left handed?","Why do I dream at night?","Why does my nan live in a different town?","How do airplanes land at night?","Where do rivers start?","Why do dogs bury bones?","How do snakes shed their skin?","How do I make my own board game?","Why does my dad drive a lorry?","How do we hear?","Why do some animals sleep all day?","Why do volcanoes throw out lava?","Why does ice burn your fingers?","Why do they call it a hurricane?","How do sharks smell blood?","How do frogs jump so far?","Why is it dark in a cave?","Why do babies cry?","Why do I laugh when I'm tickled?"];
+// Four kinds of risk the first lists missed, each written several ways (grooming, coercive secrecy, withheld care, fear of a person). All must be risk.
+const CATEGORY_RISK = ["they make me take my clothes off for photos", "I get punished if I tell anyone", "my step mum wont let me eat dinner", "I'm scared of my dads temper", "he asks me to take my clothes off", "why do I have to get undressed for my uncle", "a man took photos of me with no clothes", "my teacher wants pictures of my body", "someone wants videos of me in the bath", "an older boy wants me to take pictures of my private parts", "he kisses me on the lips and says its normal", "my babysitter touches me when mum is out", "my cousin comes into my room at night", "an adult gets in my bed at night", "he plays special games with me that I am not allowed to tell", "uncle says we have a special game", "they make me get naked", "she makes me undress", "he wants me to take off my pants", "why does my stepdad want photos of me in my pants", "somebody asked me for a picture of my body", "he looks at me when I get undressed", "he took a video of me in the shower", "my friends dad kisses me and touches my bum", "the man said take off your top for the camera", "my coach asks me to send pictures without clothes", "he keeps asking me to be naked", "my brother touches me and says dont tell", "I will get hurt if I tell", "I would be in trouble if I told someone", "if I tell they will send me away", "Im not allowed to tell anyone", "we are not allowed to tell", "dad says its our secret", "my teacher says its our secret", "mums boyfriend says I will be punished if I say anything", "she said I would get in trouble if I told", "he said nobody would believe me if I told", "I get hurt if I tell", "I will be sent away if I talk to anyone", "Im not allowed to talk about it", "I cant tell anyone or something bad will happen", "they said not to tell mum", "if I say anything I get a beating", "I get shouted at if I tell the teacher", "they told me to keep it a secret from my mum", "I got punished for telling my nan", "mum wont let me eat", "dad wont let me go to the toilet", "my stepdad wont let me sleep", "they wont let me have a drink", "she wont let me wash", "my mum doesnt let me eat dinner when Im bad", "I am not allowed any food tonight", "I get no food if I am naughty", "they lock me out of the house", "I got locked outside all night", "they lock me in my room and I cant go to the toilet", "my dad takes my dinner away when he is cross", "I dont get any breakfast", "nobody lets me have a bath", "I am not allowed to drink water at home", "no one gives me food at home", "they made me sleep in the garden", "mum says no dinner for me again", "my aunt wont let me have any food", "I was locked in the shed", "my step dad wont let me go to bed", "they keep me up all night", "I am afraid of my mums anger", "Im scared of my uncles shouting", "I am frightened of my stepdads moods", "my dads temper scares me", "I dont like it when my mum loses her temper, shes scary", "Im scared when dad gets angry", "I am afraid of how angry my step mum gets", "my mum has a bad temper and Im scared", "Im scared of my teachers temper", "my brother has a temper and I'm afraid of him", "Im terrified of my dads shouting", "when my uncle is in a mood I get really scared", "I am scared of what my mum will do when she is angry", "I am worried about my dads temper", "why am I afraid of my dad when he is cross", "the man at the shop asked me to take my top off", "my uncle takes pictures of me in the bath", "he told me to take off my pants and he took a picture", "a boy at school made me pull my trousers down", "why does my mums boyfriend watch me get changed", "he makes me sit on his lap and kiss him", "older boys want me to send them a photo without my clothes", "my teacher kisses me on the mouth", "grandad touches my bottom", "my dads friend wants to play a secret game in my bed", "they filmed me with no clothes on", "a lady online asked for a picture of me in my underwear", "my step brother comes in the bathroom when im naked", "he wants me to touch him", "why do I have to take my clothes off when uncle comes round", "my cousin plays a game where we have to take our pants off", "she took photos of me in my pyjamas and says not to show mum", "mi uncle makes me strip", "the man made me get undressed and he took photos", "somebody gave me sweets for a photo with no top on", "mum will hit me if I tell the teacher", "my dad says Ill go into care if I tell", "I'll be punished if I tell anybody what happens", "I'm in trouble if I say what he did", "we are told not to tell the grown ups", "she says no one will believe me if I tell", "I was hit for telling mum", "I wont tell anyone because he said he would hurt my dog", "my brother says I will be sent away if I say", "he said if I tell he'll get angry and hurt me", "I cant tell nobody or hell be cross", "its a secret im not supposed to tell", "i got a smack because I told gran", "if i tell the teacher I will get a hiding", "my mums partner wont let me have any dinner", "I am never allowed to eat at tea time", "they dont let me use the toilet at night", "grandma wont let me wash", "I have to go without breakfast every day", "they left me outside in the cold all night", "dad locks me in the bathroom", "my aunty keeps me in the cupboard when she goes out", "I am not allowed a drink of water at home", "my stepmum says no tea for me and I go to bed hungry", "mum says I cant have a bath for a week", "he doesnt let me sleep", "she takes my food away when I am naughty", "they wont let me in the house when it rains", "my dad makes me sleep in the car", "I wasnt allowed to go to the toilet so I wet myself", "I am scared of my mums boyfriends temper", "my grandads shouting makes me frightened", "Im afraid of my dad when hes in a bad mood", "I dread it when my step dad gets angry", "Im scared my mum will lose her temper", "my teacher is always angry and Im scared of her", "I get frightened when daddy shouts", "my uncle has a terrible temper and I hide", "im worried about my dads anger", "I am scared when mummy screams", "my brother has a bad mood and I am scared of him", "my carer shouts and I am terrified", "he makes me take my pants off and takes pics", "my uncle wants me to be naked for his camera", "the man in the car wanted to see my body", "someone asked me to show them my bum on video call", "mummys friend takes photos of me in the bath", "my coach says take your shorts off", "my babysitter makes me undress and watches", "a boy sent me a pic of his privates and wants one back", "daddys friend kisses me and says its our special secret", "my stepdad comes in my bed when mum is on nights", "grandad plays tickle games that I dont like", "an older girl touches me and says it is a game", "if I tell mum, dad will be angry with me and hit me", "he says Ill be taken away from my family if I speak", "I am scared to tell because they will punish me", "dont tell, or you will get in trouble they said", "I wasnt allowed to say what happened", "i can not tell mum or I will be hurt", "the teacher said not to tell anyone about our chats", "I got in big trouble when I told the lady at school", "my mum wont give me food when Im naughty", "I wasnt given any dinner last night", "dad wont let me use the loo", "they took away my bed", "she doesnt let me wash my hair or have a bath", "mummy wont let me drink", "my uncle locks me out in the garden", "I was left outside in the rain and nobody let me in", "i got no lunch again", "dad says no food for me today", "I am afraid of my mums moods", "dads temper scares me", "scared of daddys anger", "my step mum is always cross and I am frightened", "I get scared when he shouts and shouts", "grandpa is so angry and I am terrified", "my uncles temper is scary", "when mum is in a rage I hide under the bed", "I'm frightened of how he shouts at us", "I get scared when my dads face goes red and he yells"];
+// Everyday questions that use family words, photos, hiding, tempers, secrets and "not allowed" innocently. A few over-flags are allowed (step-family words are always "sensitive" by design).
+const SAFE_FAMILY = ["why does my dad snore", "how does my mum make bread", "why do my brother and I look alike", "why does my nan knit", "how does my grandad's watch work", "why does my uncle have a beard", "why is my sister's hair curly", "how does my aunty's car run on electricity", "why does my dad shave", "why does my mum wear perfume", "why do I look like my mum", "how did my grandma learn to bake", "why is my step brother taller than me", "why does my stepdad like football", "why does my step mum have a different accent", "why does my teacher use a whiteboard", "how does my coach time the race", "my brother and I want to build a rocket, how do rockets work", "why does my dad wake up so early", "how does my mum's phone take photos", "how does a camera take a photo", "why do photos come out blurry", "how do I take a good picture of a bird", "who took the first photograph", "how do videos get on the internet", "why do bears hide in caves", "how do we play hide and seek better", "why do chameleons hide", "why do some animals hide from predators", "why do mole rats have no fur and look naked", "why are baby birds born naked", "why do we take our clothes off to swim", "why do we wear pyjamas at night", "why do we need to wash our clothes", "how does a washing machine clean clothes", "why do I have to have a bath", "why do I need a shower after sport", "how does soap kill germs", "why do we have a toilet", "how does a toilet flush", "why do we need to drink water", "why do I get thirsty", "how long can a camel go without water", "why do we get hungry", "how do I eat healthy food", "why does my tummy feel funny when I'm hungry", "why do I have to eat breakfast", "why can I not stay up late", "why am I not allowed to drink coffee", "why am I not allowed to watch TV on school nights", "why can I not have sweets before dinner", "why is bedtime at 7", "how much sleep do kids need", "why do I have to go to sleep", "why do we dream", "why do volcanoes erupt in anger", "why does the sea have a mood", "why is the weather angry in a storm", "why does thunder roar", "why does the wind scream in winter", "why are lions scared of fire", "why are cats afraid of cucumbers", "why am I scared of spiders", "why do spiders scare people", "why is my little brother scared of the dark", "how do I tell the time", "how do I tell a joke", "can I tell my friend a secret recipe", "how do I tell if an egg is fresh", "how do bees tell each other where flowers are", "why do we keep birthdays secret in a surprise party", "how do I keep a secret garden", "what is a secret agent", "how do spies keep secrets", "why do cats keep secrets", "why do mums and dads have different jobs", "why does my dad go on business trips", "why does my mum have a big handbag", "why does my brother wear a helmet", "why do I get hot when I run", "why do I get cross when I am tired", "why do people lose their temper", "why do grumpy cats hiss", "what makes a volcano mad", "why does my dog growl when he is cross", "why do kids get punished in history", "why did the Romans have gladiators", "how did the Vikings sail", "who built the pyramids", "why did the dinosaurs die", "why does my mum kiss me goodnight", "why do I like cuddles", "why do hugs feel nice", "why does my nan hug me so tight", "why does my dad tickle me", "why did the king lock the door in the story", "how do locks work", "why do we lock the car", "why do doors have keys", "how does a house stay warm", "how do I stay safe near water", "how do I cross the road safely", "why do we have rules", "why do I have to go to school", "why do I have to do homework", "how do I make my room tidy", "how do I make a den in my room", "why do I like my bed", "why does my bed squeak", "how do mattresses work"];
 const RANK = { safe: 0, sensitive: 1, risk: 2 };
 const DECIDE_WITH_STAFF = new Set([35, 36, 37]); // reported, never failed
 const caseTable = [];
@@ -767,7 +774,8 @@ async function openPageWith(browser, { opts = {}, seed = null, session = {}, has
   await page.addInitScript((o) => { window.__opts = o.opts; window.__seed = o.seed || {}; for (const [k, v] of Object.entries(o.session)) sessionStorage.setItem(k, v); }, { opts, seed, session });
   await page.addInitScript(installStubs);
   await page.goto(pageUrl + hash);
-  await page.waitForFunction(() => window.__stub && window.__stub.log.gets.length > 0, null, { timeout: 8000 }).catch(() => {});
+  if (opts.signedOut || opts.noDb) await page.waitForFunction(() => window.__stub, null, { timeout: 8000 }).catch(() => {}); // no account: the page reads nothing
+  else await page.waitForFunction(() => window.__stub && window.__stub.log.gets.length > 0, null, { timeout: 8000 }).catch(() => {});
   return { page, errs };
 }
 const stubStore = (page) => page.evaluate(() => JSON.parse(JSON.stringify(window.__stub.store)));
@@ -812,11 +820,18 @@ async function screeningCases(browser) {
   const listRes = await page.evaluate(({ risk, safe }) => {
     const r = { safe: 0, sensitive: 1, risk: 2 }, tier = (q) => { const a = window.__safety.localCheck(q).tier, b = window.__safety.localCheck(window.__safety.scrub(q).text).tier; return r[b] > r[a] ? b : a; };
     return { risk: risk.map((q) => [q, tier(q)]), safe: safe.map((q) => [q, tier(q)]) };
-  }, { risk: [...REVIEWER_RISK, ...COORDINATOR_RISK, ...MORE_RISK], safe: SAFE_EVERYDAY });
+  }, { risk: [...REVIEWER_RISK, ...COORDINATOR_RISK, ...MORE_RISK, ...CATEGORY_RISK], safe: SAFE_EVERYDAY });
   const missed = listRes.risk.filter(([, t]) => t !== 'risk'), over = listRes.safe.filter(([, t]) => t !== 'safe');
   for (const [q, t] of missed) check(false, `regression: "${q}" should be risk, the local check gave ${t}`);
   check(over.length <= 3, `regression: ${over.length} of ${SAFE_EVERYDAY.length} everyday questions were flagged: ${over.map(([q, t]) => `${q} (${t})`).join('; ')}`);
-  caseTable.summary = { risk: `${listRes.risk.length - missed.length}/${listRes.risk.length} risk phrases came out risk (${REVIEWER_RISK.length} reviewer, ${COORDINATOR_RISK.length} coordinator, ${MORE_RISK.length} more)`, safe: `${SAFE_EVERYDAY.length - over.length}/${SAFE_EVERYDAY.length} everyday questions stayed safe${over.length ? '; flagged: ' + over.map(([q, t]) => `"${q}" (${t})`).join(', ') : ''}` };
+  const famRes = await page.evaluate((safe) => {
+    const r = { safe: 0, sensitive: 1, risk: 2 }, tier = (q) => { const a = window.__safety.localCheck(q).tier, b = window.__safety.localCheck(window.__safety.scrub(q).text).tier; return r[b] > r[a] ? b : a; };
+    return safe.map((q) => [q, tier(q)]);
+  }, SAFE_FAMILY);
+  const famOver = famRes.filter(([, t]) => t !== 'safe');
+  check(famOver.length <= 3, `regression: ${famOver.length} of ${SAFE_FAMILY.length} family-word questions were flagged (3 allowed): ${famOver.map(([q, t]) => `${q} (${t})`).join('; ')}`);
+  check(famOver.every(([, t]) => t !== 'risk'), `regression: a family-word question was flagged as risk: ${famOver.filter(([, t]) => t === 'risk').map(([q]) => q).join('; ')}`);
+  caseTable.summary = { risk: `${listRes.risk.length - missed.length}/${listRes.risk.length} risk phrases came out risk (${REVIEWER_RISK.length} reviewer, ${COORDINATOR_RISK.length} coordinator, ${MORE_RISK.length} more, ${CATEGORY_RISK.length} in the four categories: grooming, coercive secrecy, withheld care, fear of a person)`, family: `${SAFE_FAMILY.length - famOver.length}/${SAFE_FAMILY.length} family-word and everyday questions stayed safe${famOver.length ? '; flagged: ' + famOver.map(([q, t]) => `"${q}" (${t})`).join(', ') : ''}`, safe: `${SAFE_EVERYDAY.length - over.length}/${SAFE_EVERYDAY.length} everyday questions stayed safe${over.length ? '; flagged: ' + over.map(([q, t]) => `"${q}" (${t})`).join(', ') : ''}` };
   // scrub: kin words and harm words must survive, and a surname goes with the first name
   const sc = await page.evaluate(() => ['I live in a house where my dad hits me', 'Mum and Dad hit me', 'Hi I\'m Lily Brown', 'I live at 12 Elm Road because my dad hits me', 'My friend Jake Smith hits me', 'Nanny and Grandad took me out'].map((q) => window.__safety.scrub(q).text));
   check(/where my dad hits me/.test(sc[0]) && /\[place\]/.test(sc[0]) && !/live in a house/.test(sc[0]), `scrub: "I live in a house where my dad hits me" became "${sc[0]}"`);
@@ -972,7 +987,7 @@ async function alertFailure(browser) {
 
 // s5) personal details never reach the AI, the shelf, the note or the flag
 async function scrubFlow(browser) {
-  const { page, errs } = await openPageWith(browser, { opts: { classifierTier: 'safe', bookDelay: 1500 } });
+  const { page, errs } = await openPageWith(browser, { opts: { classifierTier: 'safe', bookDelay: 1500, role: 'admin', uid: 'u_test' } });
   await ask(page, 'Why is the sea salty? Call me on 07700 900123 or write to zed@example.com, my postcode is M1 4AB.', '7–9');
   await page.waitForSelector('#scrubNote');
   check((((await page.locator('#scrubNote').textContent()) || '').trim()) === "Pip took out some personal details. Pip doesn't need names or addresses to help.", 'scrub: the kind line is missing');
@@ -1251,7 +1266,7 @@ async function immediateAlert(browser) {
 
 // s11) a question that is sent stops the microphone
 async function dictationStops(browser) {
-  const { page, errs } = await openPageWith(browser, { opts: { classifierTier: 'safe', dictation: true } });
+  const { page, errs } = await openPageWith(browser, { opts: { classifierTier: 'safe', dictation: true, role: 'admin', uid: 'u_test' } });
   await page.locator('button[aria-label="Say it out loud"]').click();
   await page.locator('#q').fill('Why is the sky blue?'); await btn(page, 'Write my book').click();
   await page.locator('#approve').waitFor();
@@ -1274,12 +1289,208 @@ async function inboxReconcile(browser) {
   failures.push(...errs); await page.close();
 }
 
+// s13) every new book from a child waits for a teacher: the pending card, the inbox ("Books to check"), approve, send back, no account
+const reviewKeys = (store, cid) => Object.keys(store).filter((k) => k.startsWith(`reviews/${cid}/items/`));
+async function reviewFlow(browser) {
+  const NAMES = { u_ava: 'Ava Test', u_ben: 'Ben Test', u_cal: 'Cal Test', u_dee: 'Dee Test' };
+  const NOTE = 'zzteachernote talk to Dee about this at break';
+  // the rules comment at the top of the page lists the reviews rules (checked against db.d.ts: a prefix rule sets both levels, and {self} is last)
+  const html = fs.readFileSync(pagePath, 'utf8');
+  check(/\{ path: "reviews",\s+read: "admin",\s+write: "admin" \}/.test(html) && /\{ path: "reviews\/\{self\}",\s+read: "interact",\s+write: "interact" \}/.test(html), 'rules: the reviews rules are missing from the comment at the top of the page');
+  check(/\{ path: "flags",\s+read: "admin",\s+write: "admin" \}/.test(html), 'rules: the flags rules were lost from the comment');
+
+  // child Cal writes a safe question: no reader, a pending card, a write under reviews/<uid>/items
+  const cal = await openPageWith(browser, { opts: { classifierTier: 'safe', names: NAMES }, session: { uid: 'u_cal' } });
+  check(!(await cal.page.locator('#teacherBtn').isVisible()), 'review: a child sees the Teacher button');
+  await ask(cal.page, 'Why is the sky blue?', '7–9');
+  await cal.page.locator('#waitH').waitFor({ timeout: 8000 });
+  check((((await cal.page.locator('#waitH').textContent()) || '').trim()) === 'Waiting for your teacher to check', 'review: the child does not see "Waiting for your teacher to check"');
+  check((await cal.page.locator('#steps li.on').textContent()) === 'Teacher check', 'review: the step label is not "Teacher check"');
+  check((await cal.page.locator('#approve').count()) === 0 && (await cal.page.locator('#page').count()) === 0 && (await cal.page.locator('#reader').isHidden()), 'review: a child could open or approve the book');
+  check((await cal.page.evaluate(() => window.__stub.log.prompts.length)) === 1, 'review: the book was not written once');
+  await noJunkText(cal.page, 'waiting screen');
+  await shot(cal.page, 'review-waiting.png');
+  const st1 = await stubStore(cal.page), k1 = reviewKeys(st1, 'u_cal');
+  check(k1.length === 1 && /^reviews\/u_cal\/items\/book-r/.test(k1[0]), `review: the book was not written under reviews/<uid>/items: ${k1}`);
+  const it1 = st1[k1[0]];
+  check(it1 && it1.status === 'pending' && it1.title === 'Pip and the Blue Sky' && it1.question === 'Why is the sky blue?' && it1.age === '7–9' && typeof it1.createdAt === 'number' && it1.book && it1.book.pages.length === 13, `review: the pending item is wrong: ${JSON.stringify(it1).slice(0, 300)}`);
+  check(st1['reviews/u_cal'] && st1['reviews/u_cal'].pending === 1 && typeof st1['reviews/u_cal'].latestAt === 'number', `review: the summary is ${JSON.stringify(st1['reviews/u_cal'])}`);
+  check(!Object.keys(st1).some((k) => k.startsWith('data/users/u_cal/book-')), 'review: the book went onto the shelf before a teacher saw it');
+  await btn(cal.page, 'Back to the bookshelf').click();
+  const pc = cal.page.locator('.book-card.review[data-review="pending"]');
+  check((await pc.count()) === 1, 'review: no pending card on the shelf');
+  const pt = (await pc.textContent()) || '';
+  check(/Waiting for your teacher to check/.test(pt) && /Pip and the Blue Sky/.test(pt) && /Why is the sky blue\?/.test(pt), `review: the pending card reads "${pt}"`);
+  check((await pc.locator('button').count()) === 0, 'review: the pending card can be opened');
+  check((await cal.page.locator('.book-card').count()) === 2, 'review: the shelf has more than the sample and the pending card');
+  await noJunkText(cal.page, 'pending shelf');
+  await shot(cal.page, 'review-pending-shelf.png', true);
+  // the sample is readable without a teacher
+  await samePageCardOpen(cal.page).click();
+  check((await cal.page.locator('#waitH').count()) === 0 && (await cal.page.locator('#approve').count()) === 1, 'review: the sample book is waiting for a teacher');
+  await cal.page.locator('#approve').click(); await cal.page.waitForSelector('#page');
+  failures.push(...cal.errs); await cal.page.close();
+
+  // a second child, Dee, writes later; a sensitive and a risk question too
+  const dee = await openPageWith(browser, { opts: { classifierTier: 'safe', names: NAMES }, session: { uid: 'u_dee' } });
+  await ask(dee.page, 'Why do cats purr?', '4–6'); await dee.page.locator('#waitH').waitFor({ timeout: 8000 });
+  const stDee = await stubStore(dee.page); failures.push(...dee.errs); await dee.page.close();
+  const ava = await openPageWith(browser, { opts: { classifierTier: 'safe', names: NAMES }, session: { uid: 'u_ava' } });
+  await ask(ava.page, 'Why did my grandma die?', '7–9'); await ava.page.locator('#safetyMsg').waitFor();
+  const stAva = await stubStore(ava.page); failures.push(...ava.errs); await ava.page.close();
+  const ben = await openPageWith(browser, { opts: { classifierTier: 'safe', names: NAMES }, session: { uid: 'u_ben' } });
+  await ask(ben.page, 'My uncle hurts me.', '4–6'); await ben.page.locator('#safetyMsg').waitFor();
+  const stBen = await stubStore(ben.page); failures.push(...ben.errs); await ben.page.close();
+  const seed = { ...st1, ...stDee, ...stAva, ...stBen };
+
+  // the teacher: alerts first (risk, then sensitive), then the books to check, oldest first
+  const t = await openPageWith(browser, { opts: { names: NAMES, classifierTier: 'safe' }, seed: { store: seed }, session: { uid: 'u_teacher', role: 'admin' } });
+  const tp = t.page;
+  await tp.waitForFunction(() => /Teacher \(4\)/.test(document.querySelector('#teacherBtn').textContent), null, { timeout: 8000 }).catch(() => failures.push('review inbox: the Teacher button does not count 2 alerts and 2 books'));
+  await tp.locator('#teacherBtn').click();
+  await tp.waitForSelector('[data-book-review]');
+  const order = await tp.evaluate(() => {
+    const kinds = [...document.querySelectorAll('[data-flag-id],[data-book-review]')].map((n) => (n.dataset.flagId ? n.dataset.tier : 'book'));
+    const a = document.querySelector('#inbox'), b = document.querySelector('#bookInbox');
+    return { kinds, sectionAfter: !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING), qs: [...document.querySelectorAll('[data-book-review] .bq')].map((n) => n.textContent), head: document.querySelector('#booksH').textContent };
+  });
+  check(order.kinds.join() === 'risk,sensitive,book,book' && order.sectionAfter, `review inbox: the order is ${order.kinds} (alerts risk then sensitive, then books)`);
+  check(order.qs.join('|') === 'Why is the sky blue?|Why do cats purr?' && order.head === 'Books to check', `review inbox: books are not oldest first or the heading is wrong: ${order.qs}`);
+  const row0 = tp.locator('[data-book-review]').nth(0), row1 = tp.locator('[data-book-review]').nth(1);
+  const r0 = (await row0.textContent()) || '';
+  check(/Cal Test/.test(r0) && /Pip and the Blue Sky/.test(r0) && /Why is the sky blue\?/.test(r0) && /Ages 7–9/.test(r0), `review inbox: the first book row shows "${r0}"`);
+  check(/Dee Test/.test((await row1.textContent()) || ''), 'review inbox: the second child\'s name is missing');
+  check((await row0.locator('[data-act="approve-book"]').count()) === 0, 'review inbox: Approve is offered before the book is opened and read');
+  await row0.locator('[data-act="open-book"]').click();
+  check((await row0.locator('li[data-lesson]').count()) === 3 && (await row0.locator('ol.outline li').count()) === 13 && (await row0.locator('.answer-box').count()) === 1 && (await row0.locator('input[type="checkbox"]').count()) >= 4, 'review inbox: the teacher-check content (lessons with tick boxes, outline, answer) is missing');
+  check(/Materials/.test((await row0.textContent()) || '') && /Please look at these|No problems were found/.test((await row0.textContent()) || ''), 'review inbox: the materials or validation flags are missing');
+  check((await tp.locator('[id]').evaluateAll((ns) => { const ids = ns.map((n) => n.id); return ids.length - new Set(ids).size; })) === 0, 'review inbox: duplicate element ids');
+  await row1.locator('[data-act="open-book"]').click();
+  await noJunkText(tp, 'inbox with books');
+  await shot(tp, 'review-inbox.png', true);
+  // contrast of the new chip, light mode
+  const cl = await contrastOf(tp, '.tierchip.book'); check(cl !== null && cl >= 4.5, `review inbox light: book chip contrast ${cl && cl.toFixed(2)} < 4.5`);
+  // send back needs a note; the note goes to the admin-only notes and not to the child
+  await row1.locator('[data-act="send-back"]').click();
+  check(/Add a short note first/.test((await row1.textContent()) || ''), 'review inbox: a book was sent back without a note');
+  check(flagCount(await stubStore(tp)) === 0 && reviewStatus(await stubStore(tp), 'u_dee') === 'pending', 'review inbox: sending back without a note changed the book');
+  await row1.locator('input[type="text"]').fill(NOTE);
+  await row1.locator('[data-act="send-back"]').click();
+  await tp.waitForSelector('#teacherStatus:has-text("Sent back")', { timeout: 6000 }).catch(() => failures.push('review inbox: no "Sent back" message'));
+  // approve Cal's book
+  await tp.locator('[data-book-review]').first().locator('[data-act="open-book"]').click();
+  await tp.locator('[data-book-review]').first().locator('[data-act="approve-book"]').click();
+  await tp.waitForSelector('#teacherStatus:has-text("Approved")', { timeout: 6000 }).catch(() => failures.push('review inbox: no "Approved" message'));
+  const st2 = await stubStore(tp);
+  check(reviewStatus(st2, 'u_cal') === 'approved' && reviewStatus(st2, 'u_dee') === 'sent_back', `review inbox: statuses are ${reviewStatus(st2, 'u_cal')} and ${reviewStatus(st2, 'u_dee')}`);
+  check(st2['reviews/u_cal'].pending === 0 && st2['reviews/u_dee'].pending === 0, 'review inbox: the summaries still count a pending book');
+  const noteKey = Object.keys(st2).find((k) => k.startsWith('staffnotes/u_dee__book-r'));
+  check(noteKey && st2[noteKey].teacherNote === NOTE && st2[noteKey].handledBy === 'u_teacher' && st2[noteKey].status === 'sent_back', `review inbox: the send-back note is not at the admin-only path: ${noteKey && JSON.stringify(st2[noteKey])}`);
+  check(Object.entries(st2).filter(([, v]) => JSON.stringify(v).includes('zzteachernote')).every(([k]) => k.startsWith('staffnotes/')), 'review inbox: the note leaked into a path other than staffnotes');
+  await tp.waitForSelector('#booksEmpty', { timeout: 6000 }).catch(() => {});
+  check((await tp.locator('[data-book-review]').count()) === 0 && (await tp.locator('#booksEmpty').count()) === 1, 'review inbox: a handled book is still listed');
+  await tp.waitForFunction(() => document.querySelector('#teacherBtn').textContent === 'Teacher (2)', null, { timeout: 6000 }).catch(() => failures.push('review inbox: the count did not fall to the 2 alerts'));
+  failures.push(...t.errs); await tp.close();
+
+  // Cal's next load: the approved book is on the shelf and opens in the reader
+  const final = st2;
+  const cal2 = await openPageWith(browser, { opts: { names: NAMES }, seed: { store: final }, session: { uid: 'u_cal' } });
+  await cal2.page.waitForSelector('[data-book-id^="book-r"]', { timeout: 8000 }).catch(() => failures.push('review: the approved book did not reach the shelf'));
+  const bc = cal2.page.locator('[data-book-id^="book-r"]');
+  check((await bc.count()) === 1 && /Pip and the Blue Sky/.test((await bc.textContent()) || ''), 'review: the approved book is not on the shelf');
+  check((await cal2.page.locator('.book-card.review').count()) === 0, 'review: the waiting card stayed after the approval');
+  await cal2.page.waitForFunction(() => Object.values(window.__stub.store).some((v) => v && v.delivered === true), null, { timeout: 5000 }).catch(() => failures.push('review: the item was not marked delivered'));
+  const st3 = await stubStore(cal2.page);
+  check(Object.keys(st3).some((k) => /^data\/users\/u_cal\/book-r/.test(k) && st3[k].approved === true), 'review: the approved book was not copied into the child\'s own space');
+  check(Object.entries(st3).filter(([k]) => /^reviews\/u_cal\/items\//.test(k)).every(([, v]) => v.book === null), 'review: the book was kept twice after delivery');
+  await bc.locator('[data-act="open"]').click(); await cal2.page.waitForSelector('#page');
+  check((await cal2.page.locator('#modeSeg').count()) === 1 && (await cal2.page.locator('#approve').count()) === 0, 'review: the approved book does not open straight into the reader');
+  failures.push(...cal2.errs); await cal2.page.close();
+
+  // Dee's next load: the talk card, with no note, no reason, no title and no question
+  const dee2 = await openPageWith(browser, { opts: { names: NAMES }, seed: { store: final }, session: { uid: 'u_dee' } });
+  await dee2.page.waitForSelector('.book-card.review[data-review="talk"]', { timeout: 8000 }).catch(() => failures.push('review: no talk card after a send-back'));
+  const tc = dee2.page.locator('.book-card.review[data-review="talk"]');
+  check((((await tc.textContent()) || '').trim()) === 'Your teacher would like to talk about this one', `review: the talk card reads "${await tc.textContent()}"`);
+  const ex = await exposure(dee2.page, 'zzteachernote'); check(!exposed(ex), `review: the teacher's note is visible to the child (${exposed(ex)})`);
+  const body = (await dee2.page.locator('body').innerText()) || '';
+  check(!/purr|Pip and the Blue Sky|break|sent_back|sent back/i.test(body.replace(/Sample book[\s\S]*$/, '')) || !/zzteacher/.test(body), 'review: the send-back shows details');
+  check((await dee2.page.locator('[data-book-id^="book-r"]').count()) === 0 && (await dee2.page.locator('.book-card.review[data-review="pending"]').count()) === 0, 'review: a sent-back book is readable or still pending');
+  await shot(dee2.page, 'review-sent-back.png', true);
+  failures.push(...dee2.errs); await dee2.page.close();
+
+  // the inbox in dark mode, both tiers and a book to check
+  const seed2 = { ...stAva, ...stBen, ...st1 };
+  const dk = await openPageWith(browser, { opts: { names: NAMES }, seed: { store: seed2 }, session: { uid: 'u_teacher', role: 'admin' }, ctx: { colorScheme: 'dark' } });
+  await dk.page.locator('#teacherBtn').click(); await dk.page.waitForSelector('[data-book-review]');
+  await dk.page.locator('[data-book-review] [data-act="open-book"]').click();
+  for (const [name, sel] of [['book chip', '.tierchip.book'], ['risk chip', '.tierchip.risk'], ['sensitive chip', '.tierchip.sensitive'], ['Approve button', '[data-act="approve-book"]'], ['review card text', '#booksH']]) { const c = await contrastOf(dk.page, sel); check(c !== null && c >= 4.5, `review inbox dark: ${name} contrast ${c && c.toFixed(2)} < 4.5`); }
+  await shot(dk.page, 'review-inbox-dark.png', true);
+  failures.push(...dk.errs); await dk.page.close();
+  // the pending card in dark mode
+  const dc = await openPageWith(browser, { opts: {}, seed: { store: st1 }, session: { uid: 'u_cal' }, ctx: { colorScheme: 'dark' } });
+  await dc.page.waitForSelector('.book-card.review');
+  const cc = await contrastOf(dc.page, '.book-card.review .reviewstate'); check(cc !== null && cc >= 4.5, `review dark: the pending card text contrast ${cc && cc.toFixed(2)} < 4.5`);
+  failures.push(...dc.errs); await dc.page.close();
+
+  // a teacher writing a book on their own device passes the in-flow check, and nothing goes to the inbox
+  const d = await openPageWith(browser, { opts: { classifierTier: 'safe', role: 'admin', uid: 'u_teacher' } });
+  await ask(d.page, 'Why is the sky blue?', '7–9');
+  await d.page.locator('#approve').waitFor({ timeout: 8000 });
+  check((await d.page.locator('#waitH').count()) === 0, 'review: a teacher was told to wait');
+  await d.page.locator('#approve').click(); await d.page.waitForSelector('#page');
+  await d.page.waitForTimeout(300);
+  check(!Object.keys(await stubStore(d.page)).some((k) => k.startsWith('reviews/')), 'review: a teacher\'s own book was written to the inbox');
+  failures.push(...d.errs); await d.page.close();
+
+  // no account: signed out, or no database. A new book is not written, and the child is told why
+  for (const [name, o] of [['signed out', { signedOut: true }], ['no database', { noDb: true }]]) {
+    const n = await openPageWith(browser, { opts: { classifierTier: 'safe', ...o } });
+    await ask(n.page, 'Why is the sky blue?', '7–9');
+    await n.page.waitForFunction(() => /needs to check new books/.test(document.querySelector('#askStatus')?.textContent || ''), null, { timeout: 8000 }).catch(() => failures.push(`review (${name}): the child was not told a teacher needs to check new books`));
+    check((((await n.page.locator('#askStatus').textContent()) || '').trim()) === 'A teacher needs to check new books. Ask your teacher to sign in on this tablet.', `review (${name}): the message is "${await n.page.locator('#askStatus').textContent()}"`);
+    check((await n.page.evaluate(() => window.__stub.log.prompts.length)) === 0, `review (${name}): a book was written although nobody could check it`);
+    check((await n.page.locator('#approve').count()) === 0 && (await n.page.locator('#waitH').count()) === 0, `review (${name}): a check or waiting screen opened`);
+    check(!Object.keys(await stubStore(n.page)).some((k) => k.startsWith('reviews/')), `review (${name}): a book was written to the inbox`);
+    if (name === 'signed out') await shot(n.page, 'review-signed-out.png');
+    failures.push(...n.errs); await n.page.close();
+  }
+  // no account but a teacher's tablet (canEdit): the in-flow check works
+  const tt = await openPageWith(browser, { opts: { classifierTier: 'safe', signedOut: true, role: 'admin' } });
+  await ask(tt.page, 'Why is the sky blue?', '7–9');
+  await tt.page.locator('#approve').waitFor({ timeout: 8000 }).catch(() => failures.push('review: a teacher on a tablet with no account could not check a new book'));
+  failures.push(...tt.errs); await tt.page.close();
+
+  // the book cannot be stored: the child is told, and nothing says it was sent
+  const f = await openPageWith(browser, { opts: { classifierTier: 'safe', failReviewWrites: true } });
+  await ask(f.page, 'Why is the sky blue?', '7–9');
+  await f.page.waitForFunction(() => /could not be sent to your teacher/.test(document.querySelector('#askStatus')?.textContent || ''), null, { timeout: 10000 }).catch(() => failures.push('review: no message when the book could not be stored'));
+  check((await f.page.locator('#waitH').count()) === 0 && (await f.page.locator('.book-card.review').count()) === 0, 'review: the child was told the book is waiting although it was not stored');
+  check(!Object.keys(await stubStore(f.page)).some((k) => k.startsWith('reviews/')), 'review: a failed write left something in the inbox');
+  failures.push(...f.errs); await f.page.close();
+
+  // "Remove my books and questions": a book still waiting stays; a handled one goes
+  const seedR = { ...st1, 'reviews/u_cal/items/book-rold': { ...st1[k1[0]], status: 'sent_back', createdAt: 5 } };
+  const rm = await openPageWith(browser, { opts: {}, seed: { store: seedR }, session: { uid: 'u_cal' } });
+  await rm.page.locator('#familyArea summary').click();
+  await btn(rm.page, 'Remove my books and questions').click();
+  check(/still waiting for a teacher stays/.test((await rm.page.locator('#removeConfirm').textContent()) || ''), 'remove: the confirm does not say a waiting book stays');
+  await btn(rm.page, 'Yes, remove them').click();
+  await rm.page.waitForFunction(() => /Removed/.test(document.querySelector('#removeStatus').textContent), null, { timeout: 6000 });
+  const st4 = await stubStore(rm.page);
+  check(reviewStatus(st4, 'u_cal') === 'pending' && !('reviews/u_cal/items/book-rold' in st4), 'remove: a waiting book was removed or a handled one stayed');
+  check(/still waiting for a teacher/.test((await rm.page.locator('#removeStatus').textContent()) || ''), 'remove: the result does not say a waiting book stayed');
+  failures.push(...rm.errs); await rm.page.close();
+}
+const reviewStatus = (store, cid) => { const k = Object.keys(store).find((x) => x.startsWith(`reviews/${cid}/items/`) && !x.endsWith('book-rold')); return k ? store[k].status : null; };
+const flagCount = (store) => Object.keys(store).filter((k) => k.startsWith('staffnotes/')).length;
+
 (async () => {
   let browser;
   try {
     browser = await chromium.launch();
     const only = process.env.SMOKE_ONLY ? process.env.SMOKE_ONLY.split(',') : null; /* for working on one part: SMOKE_ONLY=riskFlow,inboxFlow */
-    for (const fn of [shelfAndCheck, everyPage, defaultsAndModes, readWithMe, resuming, reflectAndNote, phone, darkMode, reducedMotion, accountAndVoice, writeABook, lateCapabilities, hearAgain, sharedTablet, lateAndRefused, screeningCases, riskFlow, sensitiveFlow, alertFailure, scrubFlow, tellAndNotice, inboxFlow, removeMine, alertTimeout, immediateAlert, dictationStops, inboxReconcile]) if (!only || only.includes(fn.name)) await fn(browser);
+    for (const fn of [shelfAndCheck, everyPage, defaultsAndModes, readWithMe, resuming, reflectAndNote, phone, darkMode, reducedMotion, accountAndVoice, writeABook, lateCapabilities, hearAgain, sharedTablet, lateAndRefused, screeningCases, riskFlow, sensitiveFlow, alertFailure, scrubFlow, tellAndNotice, inboxFlow, removeMine, alertTimeout, immediateAlert, dictationStops, inboxReconcile, reviewFlow]) if (!only || only.includes(fn.name)) await fn(browser);
   } catch (e) {
     failures.push(`error: ${e && e.message ? e.message : e}`);
   } finally {
@@ -1287,7 +1498,7 @@ async function inboxReconcile(browser) {
   }
   if (caseTable.length) {
     console.log('\nSection 8 cases (expected tier, local check alone, stand-in AI that says safe, result):');
-    if (caseTable.summary) console.log(`Regression lists: ${caseTable.summary.risk}\nSafe list: ${caseTable.summary.safe}`);
+    if (caseTable.summary) console.log(`Regression lists: ${caseTable.summary.risk}\nSafe list: ${caseTable.summary.safe}\nFamily-word safe list: ${caseTable.summary.family}`);
     for (const r of caseTable) console.log(`${String(r.n).padStart(2)} | ${r.expect.padEnd(9)} | ${r.local.padEnd(9)} | ${r.ai.padEnd(9)} | ${r.pass.padEnd(5)} | ${r.category.padEnd(22)} | ${r.q}`);
   }
   console.log(`Screenshots: ${outDir}`);

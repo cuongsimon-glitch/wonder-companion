@@ -10,10 +10,14 @@
       { path: "",                  read: "admin",    write: "admin" },
       { path: "data/users/{self}", read: "interact", write: "interact" },
       { path: "flags",             read: "admin",    write: "admin" },
-      { path: "flags/{self}",      read: "interact", write: "interact" }
+      { path: "flags/{self}",      read: "interact", write: "interact" },
+      { path: "reviews",           read: "admin",    write: "admin" },
+      { path: "reviews/{self}",    read: "interact", write: "interact" }
     ] }
   }
-  Children are Contributors (interact); teachers are Editors or the owner (admin). staff/settings falls under the root rule, so only admin reads or writes it. -->
+  Children are Contributors (interact); teachers are Editors or the owner (admin). staff/settings and staffnotes fall under the root rule, so only admin reads or writes them.
+  Each child writes a new book to reviews/<uid>/items/<bookId> (a summary is at reviews/<uid>); a teacher approves or sends it back from the inbox, and the child's page then moves an approved book onto their shelf.
+  The rules are per path and not per field, so a child's own page could in principle mark its own review "approved": the approval is a status the honest page respects, not a lock. -->
 <style>
 /* An animated storybook. Ask -> Teacher check -> Read the book -> Reflect -> Family note.
    UI colours are tokens (light and dark). The painted pictures use their own literal colours. */
@@ -215,7 +219,12 @@ button { font: inherit; cursor: pointer; border: none; color: inherit; }
 .msgpic { width: min(100%, 340px); aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; background: var(--leaf); border: 1px solid var(--line); }
 .msgpic svg { display: block; width: 100%; height: 100%; }
 .msgtext { font-family: var(--read); font-size: clamp(1.25rem, 2.4vw, 1.6rem); line-height: 1.6; max-width: 44ch; margin: 0; }
-.book-card.held { background: var(--gold-soft); border-style: dashed; align-self: start; }
+.book-card.held, .book-card.review { background: var(--gold-soft); border-style: dashed; align-self: start; }
+.book-card .reviewstate { font-weight: 700; color: var(--ink); }
+.waitbox { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
+.tierchip.book { background: var(--teal-btn); color: var(--on-teal); }
+.book-row { border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; background: var(--paper); display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.books { display: flex; flex-direction: column; gap: 12px; border-top: 1px dashed var(--line); padding-top: 14px; }
 .family { border-top: 1px dashed var(--line); padding-top: 10px; }
 .family summary { cursor: pointer; color: var(--teal-text); padding: 6px 0; min-height: 40px; }
 .notice { display: flex; flex-direction: column; gap: 12px; }
@@ -1876,12 +1885,25 @@ function harmCheck(sentence) {
       const before = sentence.slice(0, m.index).trim().split(" ").filter(Boolean).slice(-3), prev = before[before.length - 1] || "";
       const thing = /^(?:it|this|that|which|what|everything|something|nothing)$/.test(prev) || (before.some((w) => NONHUMAN.test(w)) && !HUMANW.test(sentence));
       const mine = before.slice(-2).includes("i") && /^(?:broke|snapped|cracked|twisted|hit|hits|hitting|hurt|hurts|hurting|kick|kicks|kicking|punch|punches|punching|push|pushes|pushed|shove|shoved|bite|bites|grab|grabbed|pinch|pinched|throw|threw|bully|bullies|scare|scares|shake|shook|slap|slapped|squeeze|squeezes|tickle|tickles|pull|pulled|kiss|kissed|touch|touches|touched)\b/.test(m[0]); /* the child doing it, not having it done to them */
-      if (thing || mine) { soft = true; continue; }
+      const kind = /^(?:kiss|kisses|kissed|tickle|tickles|tickled|touch|touches|touched)\b/.test(m[0]) && /\b(?:mum|mom|mummy|mommy|mam|mama|dad|daddy|papa|nan|nanny|nana|gran|granny|grandma|grandad|grandpa|mother|father)$/.test(before.join(" ")) && !/\b(?:friend|boyfriend|girlfriend|partner|step ?\w+)$/.test(before.join(" ")) && !/\b(?:stop|not like|uncomfortable|secret|private|lips|mouth|bed|naked|do not want|hurt|hurts|yucky|icky|funny feeling|tongue|where|bum|bottom|body)\b/.test(sentence); /* a parent's kiss goodnight or tickle: an ordinary question */
+      if (thing || mine || kind) { soft = true; continue; }
       return "risk";
     }
   }
   return soft ? "sensitive" : null;
 }
+const FIRST = /\b(?:me|my|us|our|i|we|you|your)\b/;
+const PEOPLE = new RegExp(`\\b(?:${KINW}|someone|somebody|people|person|boys?|girls?|older \\w+|big \\w+|men|women)s?\\b`);
+const PICT = /\b(?:photos?|pictures?|pics?|videos?|films?|filming|filmed|selfies?|webcam|recording|recorded|camera|snaps?)\b/;
+const UNDRESS = /\b(?:clothes off|(?:take|takes|took|taking|get|gets|got|getting|pull|pulls|pulled|pulling|put|puts) (?:my |your |all |his |her |their |our |the |off |down )*(?:clothes|top|shirt|pants|trousers|knickers|underwear|pyjamas|jumper|dress|shorts|bra|vest) (?:off|down)|(?:take|takes|took|taking|get|gets|got|getting|pull|pulls|pulled|pulling) off (?:my |your |all |his |her |their |our |the )*(?:clothes|top|shirt|pants|trousers|knickers|underwear|pyjamas|jumper|dress|shorts|bra|vest)|undress\w*|naked|nude|no (?:clothes|top|shirt|pants|trousers|knickers|underwear|bra|vest)|(?:top|shirt|pants|trousers|knickers|underwear|bra|vest|clothes) off|without (?:any |my )?clothes|(?:pants|knickers|trousers) down|in (?:my|our) (?:pants|underwear|knickers|pyjamas)|strip\w*)\b/;
+const BODYPIC = /\b(?:of me|of us|of my (?:body|bum|bottom|private\w*|tummy|chest|legs|bits|parts))\b[^.?!]{0,12}\b(?:in the (?:bath|shower|toilet|bathroom|bed|bedroom)|in my (?:bed|bath|room|pants|underwear)|naked|nude|undressed|without|with no|no clothes)\b|\b(?:of|show|shows|showed|showing) my (?:body|bum|bottom|private\w*|privates|chest|bits|parts)\b|\bmy (?:body|bum|bottom|private parts|privates|chest) (?:on|for|to) (?:the |a )?(?:camera|photo|video|picture|phone|webcam)\b|\bof me in the (?:bath|shower|toilet|bathroom|bed)\b/;
+const ASKING = /\b(?:make|makes|made|making|force\w*|want|wants|wanted|ask|asks|asked|asking|tell|tells|told|let|lets|have to|has to|must|need to|say|says|said|try|tries|tried|trying|keeps? asking|took|takes|taking)\b/;
+const TELLV = /\b(?:tell|told|telling|say|said|saying|talk|talked|talking|speak|spoke|speaking|ask|asked|ring|call|report|reported|snitch|grass|open my mouth|find out|found out|let anyone know|let someone know)\b/;
+const CONSEQ = /\b(?:punish\w*|hurt|hit|beat\w*|in (?:big |a lot of |lots of |serious )?trouble|(?:get|got|gets|getting) (?:a )?(?:smack\w*|slap\w*|belt\w*|hiding|beating)|sent away|send me away|taken away|take me away|put in care|taken into care|shouted at|screamed at|killed|kill|something bad|bad things?|something terrible|never see|blamed|not believe|(?:nobody|no one) (?:would|will|is going to|is ever going to) (?:believe|listen)|called a liar|liar|get angry|be angry|go mad)\b/;
+const NOTTELL = /\b(?:not allowed|not supposed|forbidden|must not|can not|am not able|are not allowed|is not allowed|have been told not|told not|told me not|told us not|stops? me from|stopped me from)\s+(?:to )?(?:(?:tell|tells)\b|(?:say|talk|speak|ask|let (?:anyone|anybody|someone|somebody) know)\b[^.?!]{0,20}\b(?:anyone|anybody|any one|someone|somebody|no one|nobody|mum|mom|dad|teacher|nan|anything|about (?:it|this|him|her|them|what)|what (?:happened|happens|he|she|they|goes on|went on|is going on))\b)/;
+const NEEDS = "eat|eating|food|dinner|breakfast|lunch|tea|supper|meals?|snacks?|a drink|any drink|drink(?:ing)? (?:of )?(?:any )?(?:water|milk)|water|milk|wash|washing|bath|shower|toilet|loo|bathroom|pee|wee|poo|medicine|medication|tablets|inhaler|heating|blankets?|coat|warm";
+const FEAR = /\b(?:hide|hiding|hid|scared|afraid|frightened|terrified|petrified|worried|nervous|fear|fearful|dread|dreading|panic|panicking|scary|scares?|scaring)\b/;
+const TEMPER = /\b(?:temper|tempers|anger|angry|moods?|shouting|shouts|yelling|yells|screaming|screams|rage|raging|furious|cross|mad)\b/;
 const RULES = [
   { tier: "risk", cat: "abuse_or_hurt", reason: "The child may be being hit, hurt, frightened or shouted at, or may know someone who is.", test: (t, ss) => ss.some((s) => harmCheck(s) === "risk") || HARM_PASSIVE.test(t) },
   { tier: "risk", cat: "abuse_or_hurt", reason: "The child may be made to do things they do not want to do.", re: COERCE },
@@ -1897,8 +1919,19 @@ const RULES = [
   { tier: "risk", cat: "abuse_or_hurt", reason: "Someone does things to the child that the child does not like or has been told to hide.", re: /\b(?:does|did|do|doing|made|makes|make|making|wants to do|want to do)\s+(?:\w+ )?(?:bad|rude|naughty|horrible|nasty|yucky|private|secret|funny|weird|sexy|dirty)\s+(?:things|stuff)\b|\b(?:does|did|do|doing)\s+(?:\w+ )?things to (?:me|us)\b|\b(?:bruises?|marks|bruised)\b[^.?!]{0,40}\b(?:do not want to (?:change|undress|get undressed|swim|go swimming|go to swimming|take off)|hide|hiding|cover|covering|long sleeves)\b|\b(?:hide|hiding|cover|covering)\b[^.?!]{0,10}\b(?:bruises?|marks|cuts|scars)\b/ },
   { tier: "risk", cat: "online_contact", reason: "A stranger or older person is asking the child for personal details, or flattering the child.", test: (t) => new RegExp(`\\b(?:man|stranger|someone|somebody|boy|girl|person|older \\w+|teenager|lady|woman)\\b[^.?!]{0,30}\\b(?:wanted|asked for|asks for|wants|asked|asks|took|takes|got)\\b[^.?!]{0,14}\\b(?:my )?(?:number|phone number|address|where i live|picture|pictures|photo|photos|snapchat|instagram|whatsapp)\\b|\\b(?:said|says|called|calls|told|tells)\\b[^.?!]{0,10}\\b(?:i am|me|you are) (?:so |very )?(?:pretty|cute|beautiful|sexy|hot|special|handsome|mature|grown up)\\b`).test(t) },
   { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The child may not have money, food or care at home, or may be left behind.", re: /\b(?:no|not enough|run out of|out of|have not got|do not have|never have|no more)\s+(?:any\s+)?(?:money|cash)\b[^.?!]{0,20}\b(?:food|eat|dinner|bills|heating|rent|electric\w*|gas|clothes)\b|\b(?:do not|does not|will not|never|did not|can not)\s+(?:give|gives|let|lets|buy|buys)\s+(?:me|us)\s+(?:my |any |a |our )?(?:medicine|medication|tablets|pills|inhaler|insulin|drink|water|bath|wash|clean clothes|new shoes|dinner|breakfast|lunch|food)\b|\b(?:do not|did not|can not|never|not allowed to)\s+(?:i |we )?get (?:to )?(?:eat|have food|have dinner|drink|wash|sleep|have a bath|have breakfast|have lunch)\b|\b(?:never|not|will not|would not) (?:come|coming|came|be) back\b[^.?!]{0,20}\b(?:mum|mom|dad|mummy|daddy|nan|gran|she|he)\b|\b(?:mum|mom|dad|mummy|daddy|nan|gran|she|he)\b[^.?!]{0,30}\b(?:leave|leaving|left|gone|go away|abandon\w*|walk out)\b[^.?!]{0,25}\b(?:never|for good|forever|not coming back)\b|\b(?:can not|could not|do not want to|will not) (?:go|get|stay|be) (?:back )?(?:home|at home)\b/ },
-  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The child says they are frightened of a person, or of home.", test: (t) => /\b(?:i|my|me|we|our)\b/.test(t) && new RegExp(`\\b(?:scared|afraid|frightened|terrified|petrified|fear|fearful|dread|dreading)\\b[^.?!]{0,35}\\b(?:home|house|flat|bedroom|him|her|them|someone|somebody|you|alone|(?:${KINW.replace("|they", "")}))\\b|\\b(?:home|house|flat|bedroom|him|her|someone|somebody|(?:${KINW.replace("|they", "")}))\\b[^.?!]{0,25}\\b(?:scares?|frightens?|makes? me (?:feel )?(?:so |very )?(?:scared|afraid|frightened|sad|small|unsafe|uncomfortable|worried|yucky)|is scary|are scary)\\b`).test(t) },
+  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The child says they are frightened of a person, or of home.", test: (t) => /\b(?:i|my|me|we|our)\b/.test(t) && new RegExp(`\\b(?:scared|afraid|frightened|terrified|petrified|fear|fearful|dread|dreading)\\b[^.?!]{0,35}\\b(?:home|house|flat|bedroom|him|her|them|someone|somebody|you|alone|(?:${KINW.replace("|they", "")})s?)\\b|\\b(?:home|house|flat|bedroom|him|her|someone|somebody|(?:${KINW.replace("|they", "")})s?)\\b[^.?!]{0,25}\\b(?:scares?|frightens?|makes? me (?:feel )?(?:so |very )?(?:scared|afraid|frightened|sad|small|unsafe|uncomfortable|worried|yucky)|is scary|are scary)\\b`).test(t) },
   { tier: "risk", cat: "online_contact", reason: "Someone online or a stranger may be asking the child for something or for secrecy.", re: /\b(?:someone|somebody|a (?:man|stranger|boy|girl|person|friend)|people|they|he|she)\s+(?:online|on (?:the |a |my )?(?:game|app|phone|internet|roblox|minecraft|snapchat|tiktok|instagram|discord|youtube|whatsapp|chat|fortnite|tablet)|from (?:the )?(?:game|internet|app))\b|\bonline\b[^.?!]{0,40}\b(?:asked|asks|ask|wants|wanted|told|tells|messag\w+|texted|sent|says|said|keeps)\s+(?:me|us)\b|\b(?:asked|asks|wants|told|tells)\s+me\s+to\s+(?:send|share|show|take|meet|keep|not tell|delete|turn off|lie)\b|\b(?:do not|not|never) tell\b[^.?!]{0,40}\b(?:picture|photo|pic|online|stranger|secret)\b|\b(?:picture|photo|pic|selfie)\b[^.?!]{0,30}\b(?:and|but) (?:not|do not) tell\b|\bgroom\w*\b|\bmeet (?:up )?(?:with )?(?:a |someone |somebody )?(?:stranger|someone|somebody|man|person)\b[^.?!]{0,15}\b(?:i|from|who|online)\b|\b(?:stranger|man|lady|woman|someone|somebody|person)\b[^.?!]{0,25}\b(?:asked|told|wanted|says|said|tried|tries|wants)\b[^.?!]{0,8}\b(?:me|us)\b[^.?!]{0,8}\bto (?:get in|get into|come with|come in|go with|go in|follow|meet|open|take)\b|\b(?:stranger|man|someone|somebody|person|people|boy|boys|girl)\b[^.?!]{0,15}\b(?:follow|follows|followed|following|chase|chased|chasing|offered|tried to take|tried to get)\b[^.?!]{0,15}\b(?:me|us)\b/ },
+  /* grooming and sexual exploitation: clothes off, naked, photos or videos of the child's body, "special games" with a person */
+  { tier: "risk", cat: "abuse_or_hurt", reason: "The child may be asked or made to undress, or to be photographed or filmed without clothes.", test: (t, ss) => ss.some((s) => FIRST.test(s) && ((UNDRESS.test(s) && (PICT.test(s) || ASKING.test(s) || PEOPLE.test(s))) || (PICT.test(s) && BODYPIC.test(s) && (ASKING.test(s) || PEOPLE.test(s))))) },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "Someone wants to see, touch or be shown the child's body, or has sent a picture of theirs.", re: /\b(?:want|wants|wanted|asks?|asked|tries|tried|trying|keeps? asking|told|tells|says?|said)\b[^.?!]{0,16}\b(?:see|look at|looking at|show|touch|feel|stroke|kiss|photograph)\b[^.?!]{0,10}\b(?:my|our|me|us)\b[^.?!]{0,10}\b(?:body|bum|bottom|privates?|private parts|chest|tummy|legs|naked|undressed|without)\b|\b(?:pic|pics|picture|pictures|photo|photos|video|videos)\s+of\s+(?:his|her|their)\s+(?:willy|penis|vagina|privates?|private parts|body|bum|bottom|chest|boobs|breasts)\b/ },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "Someone watches the child change, wash or use the toilet.", re: /\b(?:watch|watches|watching|watched|look|looks|looking|looked|stare|stares|staring|peek|peeks|peeking)\s+(?:at )?(?:me|us)\b[^.?!]{0,15}\b(?:get changed|getting changed|change|changing|undress\w*|get undressed|in the (?:bath|shower|toilet|bathroom)|on the toilet|having a (?:bath|shower)|naked|wash|washing)\b/ },
+  { tier: "risk", cat: "abuse_or_hurt", reason: "A person plays special, secret or private games with the child, or is in the child's room or bed.", test: (t, ss) => ss.some((s) => FIRST.test(s) && PEOPLE.test(s) && /\b(?:special|secret|private|grown ?up|adult|naughty|funny|tickle|tickling|hiding|bedroom|bed|night ?time)\s+(?:games?|play|time)\b/.test(s)) },
+  /* coercive secrecy: told to keep quiet, with a price to pay for telling */
+  { tier: "risk", cat: "abuse_or_hurt", reason: "The child says there is a price for telling, or that they are not allowed to tell.", test: (t, ss) => ss.some((s) => (FIRST.test(s) && TELLV.test(s) && CONSEQ.test(s) && /\b(?:if|when|because|or|unless|after|for|else|otherwise)\b/.test(s)) || NOTTELL.test(s)) },
+  /* withholding care: food, drink, sleep, washing, the toilet; being locked out or in */
+  { tier: "risk", cat: "neglect_or_unsafe_home", reason: "The child may be refused food, drink, sleep, washing, the toilet or a way in.", re: new RegExp(`\\b(?:will not|would not|does not|do not|did not|can not|never|refuses? to|refused to|not allowed to|not going to|stops? me|stopped me)\\s+(?:let|lets|letting|allow|allows|give|gives|feed|feeds|get|gets|have|has|stop|stops)\\s+(?:me|us|him|her|them)\\s+(?:to\\s+)?(?:\\w+\\s+){0,3}?(?:${NEEDS}|sleep|sleeping|bed|rest)\\b|\\b(?:not allowed|never allowed|not permitted|banned from|forbidden|not supposed)\\s+(?:to\\s+|any\\s+|a\\s+|my\\s+)?(?:\\w+\\s+){0,3}?(?:${NEEDS})\\b|\\b(?:can not|not allowed to|never)\\s+(?:i |we )?(?:have|get|take|go)\\s+(?:to |a |any |my |some )?(?:\\w+ )?(?:${NEEDS})\\b[^.?!]{0,12}\\b(?:for|all|every|until|the whole)\\s+(?:a |two |three |four |five |\\d+ |the |next )?(?:week|weeks|day|days|night|nights|weekend|morning|afternoon|evening|time)\\b|\\b(?:will not|would not|does not|do not|did not|can not)\\s+(?:let|lets|allow|allows)\\s+(?:me|us)\\s+(?:back )?(?:in|inside)(?:\\s+(?:the|our|my)\\s+(?:house|home|flat)|\\s+(?:when|after|until|at night|all)\\b|\\s*$)|\\b(?:keeps?|kept|keeping|puts?|put|putting|shuts?|shut)\\s+(?:me|us)\\s+(?:in|inside)\\s+(?:a |the |my )?(?:cupboard|closet|wardrobe|cellar|shed|attic|garage|basement|box|loft|dark)\\b|\\b(?:i|we) (?:get|got|have|had|am given|was given|are given)\\s+(?:no|nothing|not any|hardly any)\\s+(?:\\w+\\s+)?(?:food|dinner|breakfast|lunch|tea|supper|drink|water|meals?)\\b|\\b(?:i|we) (?:was|were|am|are|have been|had been|get|got) (?:not|never) (?:given|fed|allowed)\\s+(?:\\w+\\s+){0,2}?(?:${NEEDS})\\b|\\b(?:takes?|took|taking)\\s+(?:away\\s+)?(?:my|our)\\s+(?:dinner|food|breakfast|lunch|tea|supper|drink|meal|meals|water|bed|blankets?|coat|medicine|plate)\\b|\\b(?:nobody|no one|noone)\\s+(?:lets?|allows?|gives?|washes|bathes|cares for|cares about|wakes|takes)\\s+(?:me|us)\\b|\\b(?:make|makes|made|making|force|forces|forced|let|lets)\\s+(?:me|us)\\s+(?:to )?(?:sleep|stay|wait|stand|sit|kneel|live)\\s+(?:in|on|outside|out|under)\\b[^.?!]{0,12}\\b(?:garden|floor|stairs|cupboard|cellar|shed|garage|attic|corridor|hall|hallway|yard|street|car|cold|dark|outside)\\b|\\b(?:i|we|me|us)\\s+(?:\\w+\\s+){0,2}?(?:go|going|went|goes)\\s+without\\s+(?:food|dinner|breakfast|lunch|tea|water|a drink|a bath|sleep|eating|my medicine)\\b|\\b(?:keeps?|kept|keeping)\\s+(?:me|us)\\s+(?:up|awake)\\b[^.?!]{0,20}\\b(?:all night|every night|all day|for hours|for days|until morning|till morning)\\b|\\b(?:i|we) (?:am|was|were|get|got|keep getting|always get|have been)\\s+(?:locked|shut|trapped|stuck)\\s+(?:in|inside|out|outside|alone)\\b`) },
+  /* fear of a person: their temper, anger, moods or shouting */
+  { tier: "risk", cat: "abuse_or_hurt", reason: "The child is afraid of someone's temper, anger, moods or shouting.", test: (t, ss) => ss.some((s) => FEAR.test(s) && TEMPER.test(s) && new RegExp(`\\b(?:${KINW.replace("|they", "")}|someone|somebody)s?\\b`).test(s)) },
   /* sensitive: a topic the teacher should decide on */
   { tier: "sensitive", cat: "unclear", key: "injection", reason: "The words tell the AI to ignore its rules.", re: /\b(?:ignore|disregard|forget|bypass|override)\s+(?:all |any |your |the |previous |prior |these |those |my |every )*(?:rules?|instructions?|prompts?|guidelines?|safety|filters?|training|limits|restrictions?)\b|\b(?:system|developer) prompt\b|\bjailbreak\b|\bdo anything now\b|\bpretend (?:you are|to be|that you)\b|\byou are now\b|\bwithout (?:any )?(?:rules|filters|restrictions)\b|\bno rules\b|\breveal your (?:prompt|instructions)\b/ },
   { tier: "sensitive", cat: "unclear", key: "feelings", reason: "The child may be sad, scared or in pain. A teacher should check in.", re: /\b(?:i|i am|i feel|feel|feeling|why am i|why do i feel|why do i get)\b[^.?!]{0,14}\b(?:sad|lonely|unhappy|depressed|crying|upset|worthless|useless|stupid|ugly|worried|anxious|nervous|scared|afraid|frightened|terrified|angry all)\b|\b(?:nobody|no one) (?:likes|loves|cares about|wants|plays with) me\b|\bdo not want to go to school\b/ },
@@ -1906,7 +1939,7 @@ const RULES = [
   { tier: "sensitive", cat: "illness", reason: "Illness, injury or hospital.", re: /\b(?:ill|illness|cancer|hospital|poorly|chemo\w*|disease|surgery|operation|dying|leuk\w*mia|diabet\w*|asthma)\b|\b(?:bit|bitten|stung|scratched|burnt|burned|broke|broken|bleeding|bruise\w*|injur\w*|hurt)\b[^.?!]{0,10}\b(?:me|my|i)\b/ },
   { tier: "sensitive", cat: "bodies_puberty", reason: "Bodies and growing up.", re: /\bpuberty\b|\b(?:private|intimate) (?:parts|bits|areas)\b|\bpenis\b|\bvagina\b|\bwilly\b|\btesticles?\b|\bbreasts?\b|\bboobs?\b|\bpubic\b|\bhair\b[^.?!]{0,16}\b(?:growing|grow|grows)\b[^.?!]{0,16}\b(?:places|body|armpits?|legs?)\b|\bhair (?:in|on) (?:funny|weird|strange|odd|my) (?:places|body)\b|\b(?:funny|weird|strange|odd) places\b|\bdifferent bodies\b|\bbra\b|\bsex\b|\bsexual\w*|\bnaked\b|\bnude\b|\bperiod pain\b|\bgrowing up\b/ },
   { tier: "sensitive", cat: "bodies_puberty", reason: "Bodies and growing up.", test: (t) => { const m = /\bperiods?\b/.exec(t); return !!m && !/\b(?:time|ice age|geological|school|history|historical|stone age|long|dry|wet|rainy|lesson) $/.test(t.slice(0, m.index)) && !/^(?: of| table| in history| dot| full stop)/.test(t.slice(m.index + m[0].length)); } },
-  { tier: "sensitive", cat: "reproduction", reason: "Where babies come from.", re: /\bbab(?:y|ies)\b[^.?!]{0,20}\b(?:come|comes|came|made|born|get made|grow)\b|\bpregnan\w*|\bgiving birth\b|\bhow (?:was|am) i (?:born|made)\b|\bhow are (?:babies|people) (?:born|made)\b/ },
+  { tier: "sensitive", cat: "reproduction", reason: "Where babies come from.", soft: true, re: /\bbab(?:y|ies)\b[^.?!]{0,20}\b(?:come|comes|came|made|born|get made|grow)\b|\bpregnan\w*|\bgiving birth\b|\bhow (?:was|am) i (?:born|made)\b|\bhow are (?:babies|people) (?:born|made)\b/ },
   { tier: "sensitive", cat: "family_change", reason: "Family change.", re: /\bsplit(?:s|ting)? up\b|\bdivorc\w*|\bseparat(?:e|ed|ing|ion)\b[^.?!]{0,20}\b(?:mum|mom|dad|parents)\b|\b(?:mum|mom|dad|parents|mummies|daddies|mummy|daddy)\b[^.?!]{0,25}\b(?:argue|argues|arguing|fight|fights|fighting|break up|breaking up|not live together|moved out)\b|\bstep ?(?:mum|dad|mom|parent|brother|sister)\b|\bfoster\w*|\badopt\w*|\bcustody\b|\bnew baby\b/ },
   { tier: "sensitive", cat: "religion_belief", reason: "Religion or belief.", re: /\bgod\b|\bgods\b|\ballah\b|\bjesus\b|\bheaven\b|\bhell\b|\bpray\w*|\breligio\w*|\bbible\b|\bquran\b|\bkoran\b|\bchurch\b|\bmosque\b|\bsynagogue\b|\btemple\b|\bafterlife\b|\bsouls?\b|\bangels?\b|\breincarnat\w*|\batheis\w*|\bbelieve in\b|\bhindu\w*|\bmuslim\w*|\bchristian\w*|\bjewish\b|\bsikh\w*|\bbuddhis\w*/ },
   { tier: "sensitive", cat: "identity", reason: "Identity or family make-up.", re: /\btwo (?:mums|dads|mummies|daddies|moms)\b|\bgay\b|\blesbian\b|\bbisexual\b|\btrans(?:gender)?\b|\bgender\w*|\bnon ?binary\b|\bam i a (?:boy|girl)\b|\bwhy am i (?:a )?(?:boy|girl)\b|\bracis\w*|\bdisabilit\w*|\bsame sex\b|\bhomosexual\w*/ },
@@ -1914,16 +1947,23 @@ const RULES = [
   { tier: "sensitive", cat: "war_violence", reason: "Violence between people.", soft: true, re: /\b(?:kill|kills|killing|killed|fight|fights|fighting|hit each other|hurt each other|hurting people|hit people|hits people|hurt people|shoot|shoots|hit|hits|hitting|hurt|punch|punches|kick|kicks|bully|bullies|bullying)\b/ },
   { tier: "sensitive", cat: "death_grief", reason: "Death and dying.", death: true, re: /\b(?:die|dies|died|dying|dead|death|deaths|funeral|grave|graveyard|buried|burial|passed away|pass away|cremat\w*|ashes|coffin|ghosts?|haunt\w*)\b/ }
 ];
-const ANIMALS = /\b(?:cats?|kittens?|lions?|tigers?|foxes|fox|owls?|spiders?|snakes?|sharks?|wolf|wolves|dogs?|puppy|puppies|hawks?|eagles?|bears?|predators?|prey|mice|mouse|rats?|insects?|bugs?|flies|fish|frogs?|birds?|bees?|wasps?|ants?|dinosaurs?|crocodiles?|alligators?|hamsters?|rabbits?|horses?|goats?|geese|goose|cows?|pigs?|sheep|animals?|food chain|hunt\w*|plants?|venus fly ?trap)\b/;
+const ANIMALS = /\b(?:cats?|kittens?|lions?|tigers?|foxes|fox|owls?|spiders?|snakes?|sharks?|wolf|wolves|dogs?|puppy|puppies|hawks?|eagles?|bears?|predators?|prey|mice|mouse|rats?|insects?|bugs?|flies|fish|frogs?|birds?|bees?|wasps?|ants?|dinosaurs?|crocodiles?|alligators?|hamsters?|rabbits?|horses?|goats?|geese|goose|cows?|pigs?|sheep|animals?|food chain|hunt\w*|plants?|germs?|bacteria|virus|viruses|weeds?|pests?|mould|mold|fungus|fungi|venus fly ?trap)\b/;
 const HUMANISH = /\b(?:people|person|man|men|woman|women|boy|boys|girl|girls|kid|kids|child|children|grown ups?|adults?|someone|somebody|uncle|aunt\w*|dad|daddy|mum|mummy|mom|mommy|brother|sister|teacher|friend|stranger|bully|bullies|soldiers?|police)\b/;
 const NATURE_ONLY = /\b(?:plants?|flowers?|leaf|leaves|trees?|grass|seeds?|stars?|batter(?:y|ies)|phones?|fires?|candles?|coral|cells?|bacteria|germs|dinosaurs?|bees?|ants?|insects?|bugs?|fish|stars)\b/;
 const PERSONAL = /\b(?:my|our|grandma|grandad|grandpa|nan|nana|gran|granny|mum|dad|mummy|daddy|uncle|aunt|auntie|friend|pet|hamster|dog|cat|rabbit|fish|goldfish|people|person|we|humans?|someone|everyone)\b/;
+/* everyday phrases that hold a risk word but are not about the child: a secret recipe, being scared of spiders */
+const EVERYDAY = [
+  [/\bsecret (?:recipes?|gardens?|agents?|codes?|handshakes?|languages?|ingredients?|santa|passages?|tunnels?|hideouts?|bases?|treasures?|doors?)\b/g, "secretx"],
+  [/\b(?:scared|afraid|frightened|terrified|nervous|worried) (?:of|about) (?:the )?(?:dark|spiders?|snakes?|dogs?|bugs?|insects?|thunder|lightning|storms?|heights|flying|clowns?|ghosts?|monsters?|needles?|injections?|jabs?|balloons?|wasps?|bees?|mice|mouse|rats?|sharks?|fireworks?|cats?|horses?|cows?|birds?|tests?|exams?|spelling|swimming)\b/g, "wary x"]
+];
 function localCheck(text) {
-  const t = normText(text);
+  let t = normText(text);
+  for (const [re, to] of EVERYDAY) t = t.replace(re, to);
   if (!/[a-z]{2}/.test(t)) return { tier: "sensitive", category: "unclear", reason: "The question is empty, unreadable or in another language.", key: "unclear" };
-  const ss = t.split(/[.?!;\n]+/).map((x) => " " + x.trim() + " ");
   let best = { tier: "safe", category: "none", reason: "", key: "" };
   const human = HUMANISH.test(t), animal = ANIMALS.test(t);
+  if (animal && !human) t = t.replace(/\b(?:naked|nude)\b/g, "bare x"); /* a mole rat is naked: not a question about people */
+  const ss = t.split(/[.?!;\n]+/).map((x) => " " + x.trim() + " ");
   for (const r of RULES) {
     if (TIER_RANK[r.tier] <= TIER_RANK[best.tier]) continue;
     if (!(r.test ? r.test(t, ss) : r.re.test(t))) continue;
@@ -2014,6 +2054,27 @@ async function summarise(cid) { /* the one summary document per child that the i
   const open = rows.filter((r) => OPEN.includes(r.status));
   return dbTry(() => dbCap.doc(`flags/${cid}`).set({ count: rows.length, open: open.length, latestAt: Math.max(...rows.map((r) => Number(r.createdAt) || 0)), highest: open.some((r) => r.tier === "risk") ? "risk" : open.length ? "sensitive" : "none" }));
 }
+/* the books that wait for a teacher: one summary document per child, like the alerts */
+async function summariseReviews(cid) {
+  let rows;
+  try { const snap = await dbCap.collection(`reviews/${cid}/items`).get(); rows = snap.docs.map((d) => d.data()).filter((v) => v && typeof v === "object"); } catch { return false; }
+  if (!rows.length) return dbTry(() => dbCap.doc(`reviews/${cid}`).delete());
+  return dbTry(() => dbCap.doc(`reviews/${cid}`).set({ pending: rows.filter((r) => r.status === "pending").length, latestAt: Math.max(...rows.map((r) => Number(r.createdAt) || 0)) }));
+}
+const REVIEW_WAIT = 15000; /* if the book has not been stored in this time, the child is told it was not sent */
+/* A new book goes to the teacher, never straight to the child. ok is true only when the book AND the summary were both written. */
+async function sendForReview(book, q, age) {
+  await Store.ready.catch(() => {});
+  const cid = Store.uid;
+  if (!dbCap || !cid) return { ok: false };
+  const id = "book-r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const clean = JSON.parse(JSON.stringify(book)); clean.question = q;
+  const item = { title: book.title, question: q.slice(0, 500), age: book.age_band || age || null, createdAt: Date.now(), status: "pending", book: clean };
+  if (!(await dbTry(() => dbCap.doc(`reviews/${cid}/items/${id}`).set(item)))) return { ok: false };
+  if (!(await summariseReviews(cid))) { await dbTry(() => dbCap.doc(`reviews/${cid}/items/${id}`).delete()); return { ok: false }; } /* a book the inbox cannot list would wait for ever */
+  return { ok: true, id, title: book.title };
+}
+
 /* ok is true only when the item AND its summary were both written. Nothing is claimed otherwise. */
 async function sendAlert(a, { late = false } = {}) {
   await Store.ready.catch(() => {});
@@ -2053,7 +2114,7 @@ let memStore = {};
 const lsRead = () => { /* no prototype, so an id such as "__proto__" is only a key */ try { const t = localStorage.getItem(LS_KEY); const o = t ? JSON.parse(t) : null; return Object.assign(Object.create(null), o && typeof o === "object" && !Array.isArray(o) ? o : {}); } catch { return Object.assign(Object.create(null), memStore); } };
 const lsWrite = (o) => { memStore = o; try { localStorage.setItem(LS_KEY, JSON.stringify(o)); return true; } catch { return false; } };
 const Store = {
-  mode: "local", uid: null, loading: false, note: "", flags: new Map(), flagsAt: 0, flagBusy: false, ready: null, docs: new Map(), src: new Map(), lastWrite: new Map(), queued: new Map(), pending: new Map(), inflight: new Map(), lastAt: new Map(), timers: new Map(),
+  mode: "local", uid: null, loading: false, note: "", flags: new Map(), flagsAt: 0, flagBusy: false, reviews: new Map(), reviewsAt: 0, reviewBusy: false, ready: null, docs: new Map(), src: new Map(), lastWrite: new Map(), queued: new Map(), pending: new Map(), inflight: new Map(), lastAt: new Map(), timers: new Map(),
   listeners: new Set(),
   changed() { this.listeners.forEach((f) => { try { f(); } catch {} }); },
   async init() {
@@ -2071,7 +2132,7 @@ const Store = {
     this.note = this.mode === "account" ? "Saved to your account" : "Saved on this tablet only";
     this.changed();
     if (this.mode === "account") await this.loadAccount();
-    if (this.mode === "account") { this.refreshFlags(true).catch(() => {}); flushPending().catch(() => {}); }
+    if (this.mode === "account") { this.refreshFlags(true).catch(() => {}); this.refreshReviews(true).catch(() => {}); flushPending().catch(() => {}); }
   },
   noteFlag(id) { this.flags.set(id, { id, status: "new", hasBook: false, delivered: false }); this.changed(); },
   /* the child's own flags: only their status is kept in memory, never the words. A released gentle book is copied onto the shelf. */
@@ -2100,6 +2161,33 @@ const Store = {
     }
     if (this.src.get(bid) !== "account") return false; /* only call it delivered once the child's own account holds it */
     return dbTry(() => dbCap.doc(`flags/${this.uid}/items/${fid}`).update({ delivered: true, deliveredAt: Date.now() }));
+  },
+  /* the child's own new books that wait for a teacher. Only the status, title and the safe question are kept in memory. An approved book is copied onto the shelf. */
+  noteReview(id, title, question) { this.reviews.set(id, { id, status: "pending", title, question, delivered: false }); this.changed(); },
+  async refreshReviews(force = false) {
+    if (!dbCap || !this.uid || this.reviewBusy) return;
+    if (!force && Date.now() - this.reviewsAt < 20000) return;
+    this.reviewBusy = true; this.reviewsAt = Date.now();
+    try {
+      let snap; try { snap = await dbCap.collection(`reviews/${this.uid}/items`).get(); } catch { return; }
+      const next = new Map();
+      for (const d of snap.docs) {
+        const v = d.data(); if (!v || typeof v !== "object") continue;
+        const r = { id: d.id, status: String(v.status), title: strOf(v.title, "Your book", 120), question: scrub(strOf(v.question, "", 500)).text, delivered: !!v.delivered };
+        if (r.status === "approved" && !r.delivered && await this.deliverReview(d.id, v)) r.delivered = true;
+        if (!r.delivered) next.set(d.id, r); /* a delivered book is on the shelf already */
+      }
+      this.reviews = next; this.changed();
+    } finally { this.reviewBusy = false; }
+  },
+  async deliverReview(rid, v) {
+    const book = validBook(v.book, v.age); if (!book) return false;
+    if (!this.docs.has(rid)) {
+      this.put(rid, { book, question: scrub(strOf(v.question, "", 500)).text, createdAt: Number(v.createdAt) || Date.now(), lastPage: 0, reads: 0, mode: defaultMode(book), approved: true, finished: false }, { now: true });
+      await (this.inflight.get(rid) || Promise.resolve());
+    }
+    if (this.src.get(rid) !== "account") return false; /* only call it delivered once the child's own account holds it */
+    return dbTry(() => dbCap.doc(`reviews/${this.uid}/items/${rid}`).update({ delivered: true, deliveredAt: Date.now(), book: null }));
   },
   col() { return dbCap.collection("data/users/" + this.uid); },
   async loadAccount() {
@@ -2280,7 +2368,7 @@ capsReady.then(() => { if (state.step === "ask" && $("#q")) renderAsk($("#q").va
 function refreshShelf() {
   const box = $("#shelfBox"), note = $("#shelfNote"); if (!box) return;
   const entries = Store.shelf();
-  box.replaceChildren(...entries.map(shelfCard), ...[...Store.flags.values()].map(heldCard).filter(Boolean));
+  box.replaceChildren(...entries.map(shelfCard), ...[...Store.reviews.values()].map(reviewCard).filter(Boolean), ...[...Store.flags.values()].map(heldCard).filter(Boolean));
   if (note) note.textContent = Store.loading ? "Loading your saved books…" : Store.note || "";
 }
 function shelfCard(e) {
@@ -2310,7 +2398,7 @@ function openBook(id, { fresh = false } = {}) {
   const e = Store.shelf().find((x) => x.id === id); if (!e) return;
   state.question = bookQuestion(e); state.bookId = id; state.book = e.book;
   state.reflection = ""; state.interest = ""; state.teacherObs = "";
-  if (!e.state?.approved) { renderCheck(e.book, { id, saved: true }); return; }
+  if (!e.state?.approved) { if (e.sample || Teacher.is) renderCheck(e.book, { id, saved: true }); else renderWaiting(e.book.title); return; } /* the sample needs no teacher; any other unchecked book waits for one */
   startReading(e.book, id, fresh ? 0 : e.state.lastPage || 0, { fresh });
 }
 
@@ -2319,6 +2407,7 @@ const SCRUB_NOTE = "Pip took out some personal details. Pip doesn't need names o
 const feelRepeat = new Map(); /* worries about feelings, counted for each child */
 async function start(rawQ, status, opt = {}) {
   const rel = opt.release || null; /* a teacher writing a gentle book: the question was screened already */
+  let route = "direct"; /* direct: a teacher checks it here. review: it goes to a teacher's inbox first. */
   if (!rawQ) { status.textContent = "Type or say your question first."; $("#q")?.focus(); return; }
   try { if (dict?.active()) dict.stop().catch(() => {}); } catch {} /* the microphone stops once a question is sent */
   await capsReady; await Store.ready.catch(() => {});
@@ -2344,6 +2433,9 @@ async function start(rawQ, status, opt = {}) {
     if (v.ranWithoutAI) { /* fail closed: no book is written unless the AI check said safe too */
       renderAsk(q); $("#askStatus").textContent = "Pip needs a moment. Please try again in a little while."; return;
     }
+    /* a new book is checked by a teacher before a child reads it: a teacher here checks it now, a child's book goes to the inbox, and with no account there is nobody to check it */
+    route = (await viewerIsTeacher()) ? "direct" : dbCap && Store.uid ? "review" : "none";
+    if (route === "none") { renderAsk(q); $("#askStatus").textContent = [scrubbed ? SCRUB_NOTE : "", NEED_TEACHER].filter(Boolean).join(" "); return; }
   } else state.question = q;
   renderLoading(scrubbed ? SCRUB_NOTE : "");
   const ctl = new AbortController(); state.ctl = ctl;
@@ -2352,6 +2444,7 @@ async function start(rawQ, status, opt = {}) {
     const book = validBook(raw, state.age);
     if (!book) throw { code: "bad_story" };
     book.question = q; state.book = book; state.bookId = null;
+    if (route === "review") { await submitBook(book, q); return; }
     renderCheck(book, { id: null, release: rel });
   } catch (e) {
     const msg = { not_granted: "Pip needs permission to write books. Allow it when Claude asks, then try again.", rate_limited: "Pip is out of breath. Wait a minute, then try again.", invalid_json: "Pip’s book came out jumbled. Press the button to try again.", bad_story: "Pip’s book came out jumbled. Press the button to try again." }[e?.code] || "Pip couldn’t write the book just now. Press the button to try again.";
@@ -2360,6 +2453,25 @@ async function start(rawQ, status, opt = {}) {
     if (e?.code === "cancelled") return;
     $("#askStatus").textContent = msg;
   } finally { clearInterval(loadTimer); }
+}
+const NEED_TEACHER = "A teacher needs to check new books. Ask your teacher to sign in on this tablet.";
+async function viewerIsTeacher() { try { return !!(userCap && (await userCap.canEdit())); } catch { return false; } }
+/* the child's new book goes to a teacher. Nothing says it was sent unless the write resolved. */
+async function submitBook(book, q) {
+  let timer; const timeout = new Promise((r) => { timer = setTimeout(() => r({ ok: false }), REVIEW_WAIT); });
+  const res = await Promise.race([sendForReview(book, q, state.age).catch(() => ({ ok: false })), timeout]); clearTimeout(timer);
+  if (!res.ok) { renderAsk(q); $("#askStatus").textContent = "Pip wrote your book, but it could not be sent to your teacher just now. Please try again in a little while."; return; }
+  state.book = null; state.bookId = null; state.question = "";
+  Store.noteReview(res.id, res.title, q); renderWaiting(res.title);
+}
+/* the "Teacher check" step as a child sees it */
+function renderWaiting(title) {
+  setStep("check");
+  setPanel(el("div", { class: "eyebrow", text: "Teacher check" }), el("h2", { id: "waitH", text: "Waiting for your teacher to check" }),
+    el("div", { class: "waitbox", id: "waitBox" }, calmPip(),
+      el("p", { class: "msgtext", id: "waitText", text: `${title ? `Pip wrote “${title}”. ` : ""}Your teacher reads every new book before you do. It will be on your bookshelf when they say it is ready.` }),
+      el("div", { class: "row" }, el("button", { class: "btn", type: "button", id: "waitBack", text: "Back to the bookshelf", onclick: () => renderAsk("") }))));
+  window.scrollTo(0, 0);
 }
 function renderScreening(canCancel) { /* the words are not shown here: a flagged question must never appear on the screen */
   setStep("ask"); clearInterval(loadTimer);
@@ -2379,31 +2491,39 @@ function renderLoading(note) {
 }
 
 /* ---------- teacher check ---------- */
-function renderCheck(book, { id = null, saved = false, release = null } = {}) {
-  setStep("check");
+/* what a teacher checks: the flags, the question and answer, the lessons with their facts, the materials and the pages. pfx is null (no ids) or a prefix for the ids. */
+function checkSections(book, pfx = "") {
+  const I = (n) => (pfx == null ? {} : { id: pfx + n });
   const flags = book.flags || bookFlags(book);
-  const facts = el("ul", {}, book.facts_to_check.map((f, i) => el("li", {}, el("label", {}, el("input", { type: "checkbox", id: "fact" + i }), el("span", { text: f })))));
-  const lessons = el("ul", { id: "lessonList" }, book.lessons.map((l, i) => el("li", { "data-lesson": l.id }, el("label", {},
-    el("input", { type: "checkbox", id: "lesson" + i }), el("span", {}, el("b", { text: `Lesson ${i + 1}: ${l.title}. ` }), el("span", { text: l.fact }))))));
-  const outline = el("ol", { class: "outline", id: "outline" }, book.pages.map((p, i) => {
+  const facts = el("ul", {}, book.facts_to_check.map((f, i) => el("li", {}, el("label", {}, el("input", { type: "checkbox", ...I("fact" + i) }), el("span", { text: f })))));
+  const lessons = el("ul", { ...I("lessonList") }, book.lessons.map((l, i) => el("li", { "data-lesson": l.id }, el("label", {},
+    el("input", { type: "checkbox", ...I("lesson" + i) }), el("span", {}, el("b", { text: `Lesson ${i + 1}: ${l.title}. ` }), el("span", { text: l.fact }))))));
+  const outline = el("ol", { class: "outline", ...I("outline") }, book.pages.map((p, i) => {
     const th = el("div", { class: "th" }); th.innerHTML = thumbHtml(book, p);
     const tone = toneOf(p.mood);
     return el("li", { "data-page": i }, th, el("div", { class: "ot" }, el("span", { class: "mood", "data-tone": tone, text: `${i === 0 ? "Cover" : "Page " + i} · ${p.mood}` }), el("span", { text: p.text })));
   }));
+  return [
+    book.needs_teacher ? el("div", { class: "warn" }, el("b", { text: "Talk with the child first. " }), el("span", { text: book.teacher_note || "This question touches a sensitive subject." })) : null,
+    flags.length ? el("div", { class: "warn", ...I("flagBox") }, el("b", { text: "Please look at these:" }), el("ul", {}, flags.map((f) => el("li", { text: f })))) : el("p", { class: "label", ...I("flagBox"), text: "No problems were found by the automatic checks." }),
+    el("div", { class: "check-grid" },
+      el("div", {}, el("b", { text: "The question" }), el("p", { text: book.question || state.question }), el("b", { text: "Learning aim" }), el("p", { text: book.learning_aim || "Not given" })),
+      el("div", { ...I("answerBox") }, el("b", { text: "The plain answer the book gives" }), el("p", { class: "answer-box", text: book.answer })),
+      el("div", {}, el("b", { text: "The lessons (tick each fact you have checked)" }), lessons),
+      el("div", {}, el("b", { text: "Facts behind the book" }), facts),
+      el("div", {}, el("b", { text: "Materials" }), el("ul", {}, (book.materials.length ? book.materials : ["None needed"]).map((m) => el("li", { text: m }))), el("b", { text: "Away-from-screen activity" }), el("p", { text: book.at_home }))),
+    el("div", {}, el("b", { text: "Page by page" }), outline)
+  ];
+}
+function renderCheck(book, { id = null, saved = false, release = null } = {}) {
+  setStep("check");
+  const [needs, flagBox, grid, pages] = checkSections(book, "");
   setPanel(
     el("div", { class: "eyebrow", text: "For the teacher" }),
     el("h2", { text: book.title }),
     el("p", { class: "lead", text: `Ages ${book.age_band} · ${book.pages.length - 1} pages · ${plural(book.lessons.length, "lesson")}${book.villain ? " · Villain: " + book.villain.name : ""}` }),
     release ? el("p", { class: "label", id: "gentleNote", text: "This is a gentle version for a child who has talked with a teacher. When you release it, it goes onto that child's bookshelf." }) : null,
-    book.needs_teacher ? el("div", { class: "warn" }, el("b", { text: "Talk with the child first. " }), el("span", { text: book.teacher_note || "This question touches a sensitive subject." })) : null,
-    flags.length ? el("div", { class: "warn", id: "flagBox" }, el("b", { text: "Please look at these:" }), el("ul", {}, flags.map((f) => el("li", { text: f })))) : el("p", { class: "label", id: "flagBox", text: "No problems were found by the automatic checks." }),
-    el("div", { class: "check-grid" },
-      el("div", {}, el("b", { text: "The question" }), el("p", { text: book.question || state.question }), el("b", { text: "Learning aim" }), el("p", { text: book.learning_aim || "Not given" })),
-      el("div", { id: "answerBox" }, el("b", { text: "The plain answer the book gives" }), el("p", { class: "answer-box", text: book.answer })),
-      el("div", {}, el("b", { text: "The lessons (tick each fact you have checked)" }), lessons),
-      el("div", {}, el("b", { text: "Facts behind the book" }), facts),
-      el("div", {}, el("b", { text: "Materials" }), el("ul", {}, (book.materials.length ? book.materials : ["None needed"]).map((m) => el("li", { text: m }))), el("b", { text: "Away-from-screen activity" }), el("p", { text: book.at_home }))),
-    el("div", {}, el("b", { text: "Page by page" }), outline),
+    needs, flagBox, grid, pages,
     el("div", { class: "row" },
       el("button", { class: "btn teal", type: "button", id: "approve", text: release ? "Approve and release to the child’s shelf" : "Approve and save to bookshelf", onclick: () => (release ? doRelease(book, release) : approve(book, id)) }),
       saved || book === DEMO ? null : el("button", { class: "btn ghost", type: "button", text: "Write a different version", onclick: () => start(state.question, el("p"), release ? { release } : {}) }),
@@ -2706,6 +2826,11 @@ const MSG = {
   unsent: "Please tell your teacher or a grown-up now. They want to help.",
   tell: "Please go and find your teacher or a grown-up you trust. They want to help."
 };
+function calmPip() {
+  const pic = el("div", { class: "msgpic" });
+  pic.innerHTML = sceneSvg({ setting: "garden", time: "dusk", weather: "clear", cast: [{ who: "pip", at: "centre", pose: "stand", holding: null }], props: [], labels: [], action: null }, { mood: "calm" }).html;
+  return pic;
+}
 function messageFor(tier, sent, age) {
   const young = age === "4–6";
   if (!sent) return MSG.unsent + (tier === "risk" && !young ? MSG.risk.childline : "");
@@ -2715,9 +2840,7 @@ function messageFor(tier, sent, age) {
 /* Pip, calm. The message shows nothing of the question, and no alarm. It clears by itself after about a minute. */
 function renderMessage(tier, sent, age) {
   setStep("ask");
-  const pic = el("div", { class: "msgpic" });
-  pic.innerHTML = sceneSvg({ setting: "garden", time: "dusk", weather: "clear", cast: [{ who: "pip", at: "centre", pose: "stand", holding: null }], props: [], labels: [], action: null }, { mood: "calm" }).html;
-  setPanel(el("div", { class: "msgbox", id: "safetyMsg" }, pic, el("p", { class: "msgtext", id: "msgText", text: messageFor(tier, sent, age) }),
+  setPanel(el("div", { class: "msgbox", id: "safetyMsg" }, calmPip(), el("p", { class: "msgtext", id: "msgText", text: messageFor(tier, sent, age) }),
     el("div", { class: "row" }, el("button", { class: "btn", type: "button", id: "msgOk", text: "OK", onclick: () => { state.question = ""; renderAsk(""); } })),
     el("p", { class: "label", text: "This message goes away by itself." })));
   state.question = ""; window.scrollTo(0, 0);
@@ -2737,6 +2860,12 @@ function heldCard(f) {
   if (!kind) return null;
   return el("article", { class: "book-card held", "data-held": kind }, el("h3", { text: kind === "waiting" ? "Waiting for a chat with your teacher" : "Your teacher has this one" }));
 }
+/* a new book that a teacher has not passed yet. The question was safe, so it can be shown on the child's own shelf. A book sent back shows only a kind line: never the note or the reason. */
+function reviewCard(r) {
+  if (r.status === "sent_back") return el("article", { class: "book-card review", "data-review": "talk" }, el("h3", { text: "Your teacher would like to talk about this one" }));
+  if (r.status === "approved") return el("article", { class: "book-card review", "data-review": "ready" }, el("p", { class: "reviewstate", text: "Your teacher has checked this book. It is on its way to your bookshelf." }), el("h3", { text: r.title }));
+  return el("article", { class: "book-card review", "data-review": "pending", "data-review-id": r.id }, el("p", { class: "reviewstate", text: "Waiting for your teacher to check" }), el("h3", { text: r.title }), r.question ? el("p", { class: "q", text: r.question }) : null);
+}
 function renderNotice() {
   setStep("ask");
   const P = (t) => el("p", { text: t });
@@ -2748,6 +2877,7 @@ function renderNotice() {
       P("If a child asks something that suggests they, or someone else, might be at risk, a teacher and the school’s safeguarding lead will be told, as with anything a child says at school."),
       P("Some sensitive questions, like ones about death or growing up, are held so a teacher can talk with your child first. Your child sees a kind message and no story until then."),
       P("You can ask to see or delete your child’s data by contacting the school. On the bookshelf, “Remove my books and questions” clears your child’s books and saved questions. Safety notes that a teacher has not dealt with yet stay until they have."),
+      P("A new story is written for your child but is not opened until a teacher has read and checked it. It waits on your child’s bookshelf, and shows only the title and the question your child asked."),
       P("The AI can make mistakes, which is why a teacher checks the stories. Automatic checks can also miss things, so please keep talking with your child."),
       P("This page has no adverts and no analytics, and it does not keep a recording of your child’s voice.")),
     el("div", { class: "row" }, el("button", { class: "btn", type: "button", id: "noticeBack", text: "Back to the bookshelf", onclick: () => renderAsk("") })));
@@ -2757,15 +2887,15 @@ function familyArea() {
   const out = el("p", { class: "status", id: "removeStatus", role: "status" });
   const box = el("div", { class: "row" });
   const ask = () => box.replaceChildren(el("div", { class: "confirm", id: "removeConfirm" },
-    el("span", { text: "This removes every book on this bookshelf, and the questions saved with them, for this child. It can’t be brought back. Safety notes that a teacher has not dealt with yet stay until they have been handled, and notes about a child’s safety are kept by the school under its own rules." }),
-    el("div", { class: "row" }, el("button", { class: "btn small", type: "button", id: "removeYes", text: "Yes, remove them", onclick: async () => { box.replaceChildren(); out.textContent = "Removing…"; const r = await removeMine(); out.textContent = `Removed ${plural(r.books, "book")} and the saved questions.${r.kept ? ` ${plural(r.kept, "safety note")} stay${r.kept === 1 ? "s" : ""} until a teacher has handled ${r.kept === 1 ? "it" : "them"}.` : ""}`; draw(); } }),
+    el("span", { text: "This removes every book on this bookshelf, and the questions saved with them, for this child. It can’t be brought back. Safety notes that a teacher has not dealt with yet stay until they have been handled, and notes about a child’s safety are kept by the school under its own rules. A new book that is still waiting for a teacher stays until they have checked it." }),
+    el("div", { class: "row" }, el("button", { class: "btn small", type: "button", id: "removeYes", text: "Yes, remove them", onclick: async () => { box.replaceChildren(); out.textContent = "Removing…"; const r = await removeMine(); out.textContent = `Removed ${plural(r.books, "book")} and the saved questions.${r.kept ? ` ${plural(r.kept, "safety note")} stay${r.kept === 1 ? "s" : ""} until a teacher has handled ${r.kept === 1 ? "it" : "them"}.` : ""}${r.waiting ? ` ${plural(r.waiting, "new book")} still waiting for a teacher stay${r.waiting === 1 ? "s" : ""} until they have checked ${r.waiting === 1 ? "it" : "them"}.` : ""}`; draw(); } }),
       el("button", { class: "btn small ghost", type: "button", text: "Keep them", onclick: draw }))));
   const draw = () => box.replaceChildren(el("button", { class: "btn small ghost", type: "button", id: "removeMine", text: "Remove my books and questions", onclick: ask }));
   draw();
   return el("details", { class: "family", id: "familyArea" }, el("summary", { text: "For families and teachers" }), el("div", { class: "row" }, box), out);
 }
 async function removeMine() {
-  let books = 0, kept = 0;
+  let books = 0, kept = 0, waiting = 0;
   for (const id of [...Store.docs.keys()]) { if (id !== DEMO.id) books++; await Store.remove(id); }
   Store.flags = new Map();
   if (dbCap && Store.uid) {
@@ -2778,10 +2908,19 @@ async function removeMine() {
       }
       await summarise(Store.uid);
     } catch {}
+    try { /* the child's own new books: one a teacher has not checked yet stays until they have */
+      const rs = await dbCap.collection(`reviews/${Store.uid}/items`).get();
+      for (const d of rs.docs) {
+        if ((d.data() || {}).status === "pending") { waiting++; continue; }
+        await dbTry(() => dbCap.doc(`reviews/${Store.uid}/items/${d.id}`).delete());
+      }
+      await summariseReviews(Store.uid);
+    } catch {}
   }
+  Store.reviews = new Map([...Store.reviews].filter(([, r]) => r.status === "pending"));
   kept += pendRead().filter((x) => x.uid && x.uid === Store.uid).length; /* an alert still waiting to be sent also stays */
   Store.changed();
-  return { books, kept };
+  return { books, kept, waiting };
 }
 /* a question that was flagged: the alert is written first. Nothing is said about it being sent unless the write resolved. */
 const ALERT_WAIT = 8000; /* if the alert has not been stored in this time, the child is told to find a grown-up */
@@ -2809,7 +2948,7 @@ async function raiseWithAI(fid, q, age) {
 }
 
 /* ---------- the teacher inbox (only for people who can edit) ---------- */
-const Teacher = { is: false, open: 0, urgent: false, showAll: false, rows: [], names: {}, dsl: { name: "", contact: "" }, alertsOk: null, timer: null };
+const Teacher = { is: false, open: 0, books: [], urgent: false, showAll: false, rows: [], names: {}, dsl: { name: "", contact: "" }, alertsOk: null, timer: null };
 const fmtTime = (t) => (t ? new Date(t).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "unknown time");
 const CAT_WORD = { abuse_or_hurt: "Someone may be hurting the child", neglect_or_unsafe_home: "Neglect or an unsafe home", self_harm_or_suicide: "Self-harm or wanting to die", online_contact: "Online contact", death_grief: "Death and grief", illness: "Illness or injury", bodies_puberty: "Bodies and growing up", reproduction: "Where babies come from", war_violence: "War or violence", family_change: "Family change", religion_belief: "Religion or belief", identity: "Identity", unclear: "Unclear or feelings", none: "Other" };
 const SOURCE_WORD = { local: "Found by the local check", ai: "Found by the AI check", both: "Found by both checks" };
@@ -2837,8 +2976,9 @@ async function renderBanners() {
 }
 function updateTeacherBtn() {
   const b = $("#teacherBtn"); b.hidden = !Teacher.is;
-  b.textContent = Teacher.open > 0 ? `Teacher (${Teacher.open})` : "Teacher";
-  b.setAttribute("aria-label", Teacher.open > 0 ? `Teacher inbox, ${plural(Teacher.open, "open alert")}` : "Teacher inbox");
+  const n = Teacher.open + Teacher.books.length; /* open safety alerts and books waiting to be checked */
+  b.textContent = n > 0 ? `Teacher (${n})` : "Teacher";
+  b.setAttribute("aria-label", n > 0 ? `Teacher inbox, ${[Teacher.open ? plural(Teacher.open, "open alert") : "", Teacher.books.length ? plural(Teacher.books.length, "book") + " to check" : ""].filter(Boolean).join(" and ")}` : "Teacher inbox");
 }
 /* Every child's own items are read, not just the children whose summary says something is open: a summary can be overwritten by a teacher's write. */
 Teacher.readAll = async function (all) {
@@ -2849,6 +2989,21 @@ Teacher.readAll = async function (all) {
   }
   return rows;
 };
+/* The books that wait for a teacher, oldest first. Every child's own items are read, as for alerts, and only a pending one is listed. */
+Teacher.readReviews = async function () {
+  const rows = [], snap = await dbCap.collection("reviews").get();
+  for (const d of snap.docs) {
+    const it = await dbCap.collection(`reviews/${d.id}/items`).get();
+    for (const x of it.docs) { const v = x.data(); if (!v || typeof v !== "object" || v.status !== "pending") continue; rows.push({ ...v, cid: d.id, id: x.id }); }
+  }
+  rows.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  return rows;
+};
+Teacher.loadBooks = async function () {
+  try { this.books = await this.readReviews(); } catch { return false; }
+  try { const ids = [...new Set(this.books.map((r) => r.cid))].filter((i) => !own(this.names, i)); if (ids.length && userCap) Object.assign(this.names, await userCap.profiles(ids)); } catch {}
+  return true;
+};
 Teacher.refresh = async function () { /* the count on the button and the urgent banner */
   if (!this.is) return;
   if (dbCap) {
@@ -2856,6 +3011,7 @@ Teacher.refresh = async function () { /* the count on the button and the urgent 
       const rows = await this.readAll(false);
       this.open = rows.length; this.urgent = rows.some((r) => r.tier === "risk" && r.status === "new");
     } catch {}
+    try { this.books = await this.readReviews(); } catch {}
   }
   updateTeacherBtn(); renderBanners();
 };
@@ -2924,6 +3080,49 @@ function flagRow(r, onDone) {
   }
   return row;
 }
+/* a teacher's decision on a book: who and why go to the admin-only notes, and only the status goes on the child's own item */
+async function bookAct(r, status, note) {
+  if (!(await noteWrite(r.cid, r.id, { teacherNote: note, handledAt: Date.now(), handledBy: Store.uid || null, status, title: strOf(r.title, "", 120) }))) return false;
+  const ok = await dbTry(() => dbCap.doc(`reviews/${r.cid}/items/${r.id}`).update({ status, [status === "approved" ? "approvedAt" : "sentBackAt"]: Date.now() }));
+  if (ok) await summariseReviews(r.cid);
+  return ok;
+}
+let bookRowN = 0;
+function bookRow(r, onDone) {
+  const nm = pupilLabel(r.cid, Teacher.names, r.createdAt), pfx = `rv${++bookRowN}-`;
+  const detail = el("div", { class: "flag-detail", hidden: true });
+  let built = false;
+  const build = () => {
+    built = true;
+    const book = validBook(r.book, r.age);
+    const note = el("input", { type: "text", maxlength: "300", "aria-label": "Short note", placeholder: "A short note. It is needed to send a book back, and the child does not see it." });
+    const msg = el("p", { class: "status", role: "status" });
+    const act = (status, needNote) => async () => {
+      const t = note.value.trim();
+      if (needNote && !t) { msg.textContent = "Add a short note first."; note.focus(); return; }
+      msg.textContent = "Saving…";
+      if (await bookAct(r, status, t)) onDone(status === "approved" ? "Approved. The book goes onto the child’s bookshelf the next time they open the page." : "Sent back. The child’s bookshelf will say that you would like to talk about it.");
+      else msg.textContent = "That could not be saved. Check the connection and try again.";
+    };
+    detail.append(...[
+      ...(book ? checkSections(book, pfx) : [el("p", { class: "warn", text: "This book could not be read. Send it back so the child can ask again." })]),
+      el("div", { class: "row" }, note),
+      el("div", { class: "row" },
+        el("button", { class: "btn small teal", type: "button", "data-act": "approve-book", text: "Approve", disabled: !book, onclick: act("approved", false) }),
+        el("button", { class: "btn small ghost", type: "button", "data-act": "send-back", text: "Send back", onclick: act("sent_back", true) })),
+      msg
+    ].filter(Boolean)); /* append turns a null into the text "null" */
+  };
+  return el("article", { class: "book-row", "data-book-review": r.id, "data-cid": r.cid },
+    el("div", { class: "flag-head" },
+      el("span", { class: "tierchip book", text: "Book to check" }),
+      el("b", { class: "fcat", text: strOf(r.title, "A new book", 120) }),
+      el("span", { class: "fwho", text: nm }),
+      el("span", { class: "label", text: `Ages ${r.age || "unknown"} · ${fmtTime(r.createdAt)}` })),
+    el("div", { class: "fq" }, el("b", { text: "The child asked: " }), el("span", { class: "bq", text: strOf(r.question, "(the question was not kept)", 500) })),
+    el("div", {}, el("button", { class: "btn small ghost", type: "button", "data-act": "open-book", text: "Open", onclick: (e) => { if (!built) build(); detail.hidden = !detail.hidden; e.currentTarget.textContent = detail.hidden ? "Open" : "Hide"; } })),
+    detail);
+}
 async function renderTeacher(msg = "") {
   setStep("teacher");
   const list = el("div", { class: "inbox", id: "inbox" }, el("p", { class: "label", text: "Loading…" }));
@@ -2932,11 +3131,14 @@ async function renderTeacher(msg = "") {
   all.addEventListener("change", () => { Teacher.showAll = all.checked; renderTeacher(); });
   const dslWarn = el("div", { class: "banner info", id: "dslWarn", hidden: true });
   const setup = el("section", { class: "setup", id: "safetySetup", "aria-labelledby": "setupH" });
+  const bookList = el("div", { class: "inbox", id: "bookList" }, el("p", { class: "label", text: "Loading…" }));
+  const books = el("section", { class: "books", id: "bookInbox", "aria-labelledby": "booksH" }, el("h3", { id: "booksH", text: "Books to check" }),
+    el("p", { class: "label", text: "New books that children asked for wait here. A child can read one only after you approve it. Safety alerts always come first." }), bookList);
   setPanel(el("div", { class: "eyebrow", text: "For teachers" }), el("h2", { text: "Teacher inbox" }),
     el("p", { class: "lead", text: "Alerts from children appear here, urgent ones first. This page prompts you. It does not replace your school’s child protection procedure or your DSL." }),
-    dslWarn, status, el("label", { class: "row" }, all, el("span", { text: "Show handled alerts too" })), list, setup,
+    dslWarn, status, el("h3", { id: "alertsH", text: "Safety alerts" }), el("label", { class: "row" }, all, el("span", { text: "Show handled alerts too" })), list, books, setup,
     el("div", { class: "row" }, el("button", { class: "btn ghost", type: "button", id: "teacherBack", text: "Back to the bookshelf", onclick: () => renderAsk("") })));
-  if (!dbCap) { list.replaceChildren(el("p", { text: "The inbox needs this page open in Claude with its database." })); return; }
+  if (!dbCap) { list.replaceChildren(el("p", { text: "The inbox needs this page open in Claude with its database." })); bookList.replaceChildren(); return; }
   const ok = await Teacher.load();
   if (state.step !== "teacher") return;
   const done = (m) => { renderTeacher(m); Teacher.refresh(); };
@@ -2954,6 +3156,13 @@ async function renderTeacher(msg = "") {
       el("button", { class: "btn small teal", type: "button", id: "saveDsl", text: "Save DSL details", onclick: async () => { const ok2 = await dbTry(() => dbCap.doc("staff/settings").set({ dslName: dn.value.trim().slice(0, 120), dslContact: dc.value.trim().slice(0, 160), updatedAt: Date.now(), updatedBy: Store.uid })); if (ok2) { Teacher.dsl = { name: dn.value.trim(), contact: dc.value.trim() }; sMsg.textContent = "Saved."; dslWarn.hidden = !!Teacher.dsl.name; } else sMsg.textContent = "That could not be saved."; } }),
       el("button", { class: "btn small ghost", type: "button", id: "testAlert", text: "Send a test alert", onclick: async () => { works.textContent = "Testing…"; Teacher.alertsOk = await testAlert(); works.textContent = TEST_WORD[Teacher.alertsOk ? "yes" : "no"]; } })),
     sMsg, works, el("p", { class: "label", text: "A test alert writes and reads back a test record from your own account. It does not appear in the inbox." }));
+  /* the books to check come last: the alerts above are on the screen first */
+  const okBooks = await Teacher.loadBooks();
+  if (state.step !== "teacher") return;
+  if (!okBooks) bookList.replaceChildren(el("p", { class: "warn", text: "The books to check could not be read. Check the connection and open the inbox again." }));
+  else if (!Teacher.books.length) bookList.replaceChildren(el("p", { id: "booksEmpty", text: "No books are waiting." }));
+  else bookList.replaceChildren(...Teacher.books.map((r) => bookRow(r, done)));
+  updateTeacherBtn();
 }
 const TEST_WORD = { yes: "Teacher alerts can be written and read back from this teacher account. This doesn’t prove a child’s account can send one. Check with a test pupil account at Contributor level.", no: "A test alert could not be written and read back from this account. Alerts may not reach teachers. Check the sharing level and the connection, then try again." };
 async function testAlert() { /* write a test flag, read it back, then remove it */
