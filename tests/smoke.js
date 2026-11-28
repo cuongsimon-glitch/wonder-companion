@@ -1513,11 +1513,12 @@ async function reviewFlow(browser) {
   failures.push(...tt.errs); await tt.page.close();
 
   // the book cannot be stored: the child is told, and nothing says it was sent
-  const f = await openPageWith(browser, { opts: { classifierTier: 'safe', failReviewWrites: true } });
+  const f = await openPageWith(browser, { opts: { classifierTier: 'safe', failBookReviews: true } });
   await ask(f.page, 'Why is the sky blue?', '7–9');
-  await f.page.waitForFunction(() => /could not be sent to your teacher/.test(document.querySelector('#askStatus')?.textContent || ''), null, { timeout: 10000 }).catch(() => failures.push('review: no message when the book could not be stored'));
-  check((await f.page.locator('#waitH').count()) === 0 && (await f.page.locator('.book-card.review').count()) === 0, 'review: the child was told the book is waiting although it was not stored');
-  check(!Object.keys(await stubStore(f.page)).some((k) => k.startsWith('reviews/')), 'review: a failed write left something in the inbox');
+  await f.page.waitForFunction(() => /Your teacher will look at your question/.test(document.querySelector('#askStatus')?.textContent || ''), null, { timeout: 10000 }).catch(() => failures.push('review: no message when the book could not be stored'));
+  check((await f.page.locator('#waitH').count()) === 0 && (await f.page.locator('.book-card.review[data-review="pending"]').count()) === 0, 'review: the child was told the book is waiting although it was not stored');
+  const sf = await stubStore(f.page), rf = Object.keys(sf).filter((k) => /^reviews\/u_test\/items\//.test(k));
+  check(rf.length === 1 && sf[rf[0]].kind === 'question' && sf[rf[0]].reason === 'book_not_sent', `review: the book was not stored, so only a question should wait: ${JSON.stringify(rf.map((k) => sf[k]))}`);
   failures.push(...f.errs); await f.page.close();
 
   // "Remove my books and questions": a book still waiting stays; a handled one goes
@@ -1621,8 +1622,8 @@ async function reviewExtras(browser) {
   // 6) the write lands after the 15 second wait: the child is told, then told it arrived, and a retry does not write a second copy
   const gil = await openPageWith(browser, { opts: { classifierTier: 'safe', slowReviewWrite: 17500 }, session: { uid: 'u_gil' } });
   await ask(gil.page, 'Why do owls hoot?', '7–9');
-  await gil.page.waitForFunction(() => /could not be sent to your teacher/.test(document.querySelector('#askStatus')?.textContent || ''), null, { timeout: 20000 }).catch(() => failures.push('late write: no "could not be sent" message after the wait'));
-  check((await gil.page.locator('.book-card.review').count()) === 0, 'late write: a waiting card showed before the write landed');
+  await gil.page.waitForFunction(() => /Your teacher will look at your question/.test(document.querySelector('#askStatus')?.textContent || ''), null, { timeout: 20000 }).catch(() => failures.push('late write: no "will look at your question" message after the wait'));
+  check((await gil.page.locator('.book-card.review[data-review="pending"]').count()) === 0, 'late write: a waiting book card showed before the write landed');
   check(await gil.page.locator('#goBtn').isDisabled(), 'in flight: the send button is on while the first copy is still being written');
   await gil.page.evaluate(() => document.querySelector('#goBtn').click());
   await gil.page.waitForTimeout(300);
@@ -1633,15 +1634,19 @@ async function reviewExtras(browser) {
   await gil.page.locator('#q').fill('Why do owls hoot?'); await btn(gil.page, 'Write my book').click();
   await gil.page.locator('#waitH').waitFor({ timeout: 10000 });
   const sg = await stubStore(gil.page);
-  check(Object.keys(sg).filter((k) => k.startsWith('reviews/u_gil/items/')).length === 1 && sg['reviews/u_gil'].pending === 1, `late write: a retry wrote a second copy: ${Object.keys(sg).filter((k) => k.startsWith('reviews/u_gil/items/')).length} items, summary ${JSON.stringify(sg['reviews/u_gil'])}`);
+  const gilItems = Object.keys(sg).filter((k) => k.startsWith('reviews/u_gil/items/'));
+  check(gilItems.filter((k) => sg[k].kind !== 'question').length === 1 && gilItems.filter((k) => sg[k].kind === 'question').length === 1 && sg['reviews/u_gil'].pending === 2, `late write: a retry wrote a second book, or the question is missing: ${gilItems.length} items, summary ${JSON.stringify(sg['reviews/u_gil'])}`);
   failures.push(...gil.errs); await gil.page.close();
 
   // 7) the summary write failed and the item could not be taken back: the child is told it was not sent, and the next load of the child's page repairs the summary so the inbox lists it
   const hal = await openPageWith(browser, { opts: { classifierTier: 'safe', failReviewSummary: true, failReviewDelete: true }, session: { uid: 'u_hal' } });
   await ask(hal.page, 'Why is grass green?', '7–9');
-  await hal.page.waitForFunction(() => /could not be sent to your teacher/.test(document.querySelector('#askStatus')?.textContent || ''), null, { timeout: 15000 }).catch(() => failures.push('summary: no "could not be sent" message'));
+  // the stub fails every summary write, so the question's summary fails too: the child is told to find a grown-up
+  await hal.page.locator('#safetyMsg').waitFor({ timeout: 15000 }).catch(() => failures.push('summary: no "Please tell your teacher" message'));
+  check(((await hal.page.locator('#msgText').textContent()) || '').startsWith('Please tell your teacher or a grown-up now.'), 'summary: the child was not told to find a grown-up');
   const sh = await stubStore(hal.page);
-  check(Object.keys(sh).filter((k) => k.startsWith('reviews/u_hal/items/')).length === 1 && !('reviews/u_hal' in sh), 'summary: expected an item with no summary after the failures');
+  // the question matches the book already waiting (same question), so only the book is stored; its summary is missing
+  check(Object.keys(sh).filter((k) => k.startsWith('reviews/u_hal/items/')).length === 1 && !('reviews/u_hal' in sh), 'summary: expected only the book as an item with no summary after the failures');
   failures.push(...hal.errs); await hal.page.close();
   const hal2 = await openPageWith(browser, { opts: {}, seed: { store: sh }, session: { uid: 'u_hal' } });
   await hal2.page.waitForFunction(() => window.__stub.store['reviews/u_hal'] && window.__stub.store['reviews/u_hal'].pending === 1, null, { timeout: 8000 }).catch(() => failures.push('summary: the child\'s page did not repair the missing summary'));
@@ -1838,12 +1843,11 @@ async function questionFlow(browser) {
   // 5) a write to the teacher that never settles must not leave the Write button off for ever
   const h = await openPageWith(browser, { opts: { classifierTier: 'safe', hangReviewWrites: true }, session: { uid: 'u_amy' } });
   await ask(h.page, 'Why do cats purr?', '7–9');
-  await h.page.waitForFunction(() => /could not be sent to your teacher/.test(document.querySelector('#askStatus')?.textContent || ''), null, { timeout: 20000 }).catch(() => failures.push('hung write: no message after the wait'));
-  check(await h.page.locator('#goBtn').isDisabled(), 'hung write: the Write button is on while the write is in flight');
-  await h.page.locator('#q').fill('Why do owls hoot?');
-  check(await h.page.locator('#goBtn').isEnabled(), 'hung write: another question cannot be asked while one is in flight');
+  // every review write hangs: the book is given up after the wait, its question write hangs too, and the child is told to find a grown-up
+  await h.page.locator('#safetyMsg').waitFor({ timeout: 40000 }).catch(() => failures.push('hung write: no "Please tell your teacher" message after the wait'));
+  check(((await h.page.locator('#msgText').textContent()) || '').startsWith('Please tell your teacher or a grown-up now.'), 'hung write: the child was not told to find a grown-up');
+  await btn(h.page, 'OK').click();
   await h.page.locator('#q').fill('Why do cats purr?');
-  check(await h.page.locator('#goBtn').isDisabled(), 'hung write: the same question can be sent again while the first is in flight');
   await h.page.waitForFunction(() => !document.querySelector('#goBtn').disabled, null, { timeout: 8000 }).catch(() => failures.push('hung write: the Write button never came back after the expiry'));
   failures.push(...h.errs); await h.page.close();
 
