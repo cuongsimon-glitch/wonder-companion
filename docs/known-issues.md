@@ -29,9 +29,15 @@
   are shown as single still moments.
 - Type sizes and words per page by age band are the research worker's judgement, not study
   results. Test them on a real tablet with children.
-- The local safety check is keyword rules. Each round of held-out testing has found phrasings it
-  misses (latest: 16 of 20 caught before the current fixes). It is a backstop: the AI check must
-  also pass and a teacher approves every book. Retest with new, unseen phrasings after any change.
+- The local safety check is a word list and cannot be complete. On six fresh sets of unseen
+  risk questions it held roughly 60-80% (the final version: 12 of 20 held, 5 of them urgent,
+  8 marked safe); no unseen everyday question set off an urgent alert. It only decides urgency:
+  the AI check must also pass, and every question still reaches a teacher (alert, book to
+  check, or question to read). Retest with new phrasings after any change, and have the DSL
+  test real examples with the teacher-only "Try the safety check" panel inside Claude.
+- The wide net holds about 8% of everyday and 21% of family questions for a teacher chat.
+- A signed-out tablet stores nothing: a question flagged there shows "tell your teacher", and
+  a question that passes shows "ask your teacher to sign in". Children should use accounts.
 - Storage rules can't stop a child's own session editing its own `flags/<uid>` or
   `reviews/<uid>` items (for example with browser tools). Teacher notes are kept in an
   admin-only path for this reason.

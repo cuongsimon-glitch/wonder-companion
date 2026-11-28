@@ -8,7 +8,11 @@ A child asks any question. The AI writes an animated picture book that answers i
 a try-fail-try-fail-succeed arc that ends in triumph, a realistic answer page and a recap. Pip
 makes the choices inside the story; the child reads. Every page has a pen-and-wash watercolour
 illustration built from what its text says, with gentle animation. The child reads alone or with
-captions ("I'll read", "Read with me", "Read to me") and can tap a word to hear it. A teacher
+captions ("I'll read", "Read with me", "Read to me") and can tap a word to hear it. Every question is
+scrubbed of personal details and screened in two tiers (risk of harm, sensitive topic) by a
+local word check and an AI check; flagged questions go to a teacher inbox (Editors and the
+owner are teachers; children are Contributors), and a teacher approves every AI-written book
+before the child can read it, so every question a child asks is read by a teacher. A teacher
 checks the facts first. Books go on a bookshelf the child can come back to, and each reading
 ends with the child's reflection and a note for the family. The design basis is
 `docs/storybook.md`, which builds on `docs/storytelling.md`.
@@ -27,6 +31,7 @@ Claude. The built-in sample book about the fox camera works anywhere.
 - `docs/progress.md`: what's done and what's next.
 - `docs/decisions.md`: decisions and the reasons for them.
 - `docs/known-issues.md`: gotchas and open problems.
+- `docs/safety.md`: the design basis for screening, the teacher inbox and children's data.
 - `.claude/agents/`: the four workers (scout, builder, engineer and reviewer).
 - `.claude/skills/reflect/`: the end-of-session review.
 
