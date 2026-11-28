@@ -1624,6 +1624,7 @@ async function reviewExtras(browser) {
   await ask(gil.page, 'Why do owls hoot?', '7–9');
   await gil.page.waitForFunction(() => /Your teacher will look at your question/.test(document.querySelector('#askStatus')?.textContent || ''), null, { timeout: 20000 }).catch(() => failures.push('late write: no "will look at your question" message after the wait'));
   check((await gil.page.locator('.book-card.review[data-review="pending"]').count()) === 0, 'late write: a waiting book card showed before the write landed');
+  await gil.page.locator('#q').fill('Why do owls hoot?'); /* the child types the same question again while the first copy is still being written */
   check(await gil.page.locator('#goBtn').isDisabled(), 'in flight: the send button is on while the first copy is still being written');
   await gil.page.evaluate(() => document.querySelector('#goBtn').click());
   await gil.page.waitForTimeout(300);
