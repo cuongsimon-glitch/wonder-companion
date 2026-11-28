@@ -59,3 +59,10 @@ Each entry gives the date, the decision and the reason.
 - 2026-11-28: **No book unless both safety checks pass**: the local check says safe and the AI
   classifier returned safe. If the AI check fails, the child is asked to try again (fail
   closed). A locally flagged question sends its alert straight away, without waiting for the AI.
+- 2026-11-28: **The local safety check is a wide net with simple rules and no exemptions**
+  (user decision). Urgent (risk) comes only from a short list of explicit phrases. Any question
+  with a person word and a worry word (including close misspellings) is held for a teacher chat.
+  Nothing lowers a tier. Reason: four review rounds showed that every exemption added to cut
+  false alarms opened a way to hide a real disclosure. Accepts more teacher chats (about 1 in 6
+  family questions in testing). The AI check and teacher approval of every book stay the main
+  protection; a teacher-only "Try the safety check" panel lets the DSL test them.
