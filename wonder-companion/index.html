@@ -243,7 +243,7 @@ button { font: inherit; cursor: pointer; border: none; color: inherit; }
 .fq { background: var(--card); border-radius: 12px; padding: 10px 12px; overflow-wrap: anywhere; }
 .dslline { background: var(--rose-soft); border-radius: 12px; padding: 10px 12px; }
 .flag-detail { display: flex; flex-direction: column; gap: 8px; }
-.flag-detail input[type="text"], .setup input[type="text"] { font: inherit; color: var(--ink); background: var(--paper); border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px; min-width: 0; flex: 1 1 220px; }
+.flag-detail input[type="text"], .setup input[type="text"], .book-row input[type="text"] { font: inherit; color: var(--ink); background: var(--paper); border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px; min-width: 0; flex: 1 1 220px; }
 .setup { border-top: 1px dashed var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
 
 /* picture life: gentle loops. They stop under reduced motion. */
@@ -1874,7 +1874,7 @@ const YOU_W = new Set("you your yours yourself".split(" ")); /* a person word fo
 const MEDICAL_W = new Set("doctor doctors dentist dentists nurse nurses".split(" ")); /* a person word for the net, but never the one who "hurts" the child for risk */
 const PERSON_W = new Set((Array.from(SELF_W).concat(Array.from(YOU_W)).join(" ") + " he him his himself she her herself they them their themselves someone somebody anyone anybody nobody everyone everybody people person man men woman women lady ladies boy boys girl girls kid kids child children baby babies " +
   "mum mummy mommy mom mam mama mother dad daddy father papa pa stepdad stepmum stepmom stepmother stepfather stepbrother stepsister step brother sister nan nana nanny nanna gran granny grandma grandmother grandad granddad grandpa grandfather grandparent grandparents grandson granddaughter parent parents guardian uncle aunt aunty auntie cousin nephew niece " +
-  "teacher coach tutor babysitter childminder carer neighbour neighbor boyfriend girlfriend partner stranger bully bullies friend mate classmate doctor dentist nurse priest vicar driver adult adults grownup grownups family relative relatives twin twins sibling siblings headteacher").split(" "));
+  "mr mrs ms sir teacher coach tutor babysitter childminder carer neighbour neighbor boyfriend girlfriend partner stranger bully bullies friend mate classmate doctor dentist nurse priest vicar driver adult adults grownup grownups family relative relatives twin twins sibling siblings headteacher").split(" "));
 const isPerson = (w) => PERSON_W.has(w) || (w.length >= 4 && w.endsWith("s") && PERSON_W.has(w.slice(0, -1))); /* "mummys", "dads" */
 const OTHER_NOUNS = "mum|mummy|mommy|mom|mam|mama|mother|dad|daddy|father|papa|stepdad|stepmum|stepmom|stepmother|stepfather|brother|sister|nan|nana|nanny|gran|granny|grandma|grandmother|grandad|granddad|grandpa|grandfather|uncle|aunt|aunty|auntie|cousin|teacher|coach|babysitter|friend|mate|baby|boy|girl|kid|child|man|woman|lady";
 
@@ -1948,7 +1948,7 @@ const R_STRIP = /\b(?:naked(?! eye)|nude|undress|undresses|undressed|undressing|
 const R_CLOTHES = /\b(?:take|takes|took|taking|pull|pulls|pulled) (?:my |your |his |her |their |our )?(?:top|shirt|clothes|pants|trousers|knickers|underwear|bra|vest|dress|shorts|skirt) (?:off|down)\b|\bclothes off\b|\bpants down\b|\bknickers down\b/;
 const R_CHOKE = /\b(?:hands?|fingers?|arms?|rope|belt|cord)\b[^.?!]{0,15}\b(?:round|around|on|over|across|against) (?:my|our) (?:neck|throat)\b|\b(?:squeez\w*|grab\w*|press\w*|clutch\w*|clamp\w*|held|holds?|holding|choke\w*|strangl\w*)\b[^.?!]{0,10}\b(?:my|our) (?:neck|throat|nose)\b|\b(?:pillow|cushion|hand|hands|blanket)\b[^.?!]{0,12}\b(?:over|on|against|across) (?:my|our) (?:face|mouth|nose)\b|\b(?:hold|holds|held|holding|push|pushes|pushed|keep|keeps|kept|put|puts|putting|duck|ducks)\b[^.?!]{0,12}\b(?:my|our) (?:head|face)\b[^.?!]{0,10}\bunder\b|\b(?:hold|holds|held|push|pushes|pushed|keep|keeps|kept|put|puts)\s+(?:me|us)\s+under\s+(?:the )?water\b|\b(?:hold|holds|held|holding|pinch|pinches|cover|covers|covered) my nose\b/;
 const R_HAND = /\b(?:hand|hands|finger|fingers)\b[^.?!]{0,12}\b(?:up|down|inside|under|in|into|on|between)\b[^.?!]{0,8}\b(?:my|our) (?:skirt|dress|pants|trousers|knickers|underwear|pyjamas|bum|bottom|thighs?|privates?|private parts)\b/;
-const R_SHOW = /\b(?:shows?|showed|showing) (?:me|us) (?:his|her|their) (?:private|privates|willy|penis|vagina|bum|bottom|body|boobs|breasts)\b|\b(?:asks?|asked|wants?|wanted|tells?|told|makes?|made) (?:me|us) (?:to )?(?:show|touch|kiss|undress|take off)\b/;
+const R_SHOW = /\b(?:shows?|showed|showing) (?:me|us) (?:his|her|their) (?:private|privates|willy|penis|vagina|bum|bottom|body|boobs|breasts)\b|\b(?:asks?|asked|wants?|wanted|tells?|told|makes?|made) (?:me|us) (?:to )?(?:show|touch|kiss|undress|take off)\b|\b(?:asks?|asked|wants?|wanted|tells?|told|makes?|made) (?:me|us) (?:to )?(?:take|send) (?:\w+ ){0,2}(?:pictures?|photos?|pics?|videos?) of my (?:private|body|bum|bottom|privates|chest|boobs|breasts)\b/;
 const R_THREAT = /\bthreaten\w* (?:to )?(?:send|hit|hurt|kill|take|put|leave|lock)\b|\b(?:kill|kills|killed|murder|murders) (?:me|us)\b|\b(?:will|would|going to|gonna) (?:hit|hurt|kill|beat|punish|slap|smack|belt|punch|kick) (?:me|us)\b|\b(?:throws?|throwing|thrown|threw)\b(?: \w+){0,2}? (?:things|stuff|plates?|chairs?|a chair|shoes?|a shoe|knives|a knife|objects?|bottles?|a bottle|glasses|a glass|cups?|food|toys?) at (?:me|us)\b/;
 const R_BRUISE = new RegExp(`\\b(?:bruise|bruises|bruised|black eye|welts?|marks|scars?|cuts)\\b(?: \\w+){0,7}? (?:from|by|because of|caused by) (?:my |our |his |her )?(?:${OTHER_NOUNS})s?\\b`);
 const R_SHOWBAD = /\b(?:shows?|showed|showing|sends?|sent) (?:me|us) (?:\w+ )?(?:rude|naughty|dirty|porn\w*|adult|nude|naked|sexy|inappropriate|bad) (?:videos?|pictures?|photos?|pics?|films?|clips?|things)\b|\b(?:pictures?|photos?|pics?|videos?)\b[^.?!]{0,25}\b(?:himself|herself|themselves)\b[^.?!]{0,20}\b(?:no clothes|naked|nude|undressed|private)\b/;
@@ -1959,9 +1959,9 @@ const R_TELLNOT = /\b(?:do not|dont|must not|not to|and not|or not|told me not t
 const R_SECRET2 = /\bsecret\b/;
 const R_TOUCHW = /\b(?:touch\w*|kiss\w*|undress\w*|naked|nude|private|privates|(?:photos?|pictures?|pics?|videos?) of (?:me|us|my))\b/;
 const SELFV = "hurt|harm|cut|burn|scratch|hit|punish|starve|bite|choke|hang|poison|hurting|harming|cutting|burning|scratching|hitting|punishing|starving|biting|choking|hanging|poisoning";
-const R_SELF = new RegExp(`\\b(?:kill(?:ing)? (?:my ?self|myself)|(?:want|wants|wanted|wish|wished|wanna|going|thinking of|think about|thinking about|thought about|planning|keep thinking about) (?:to )?(?:die|dying|be dead|end (?:it|my life|it all)|not be here|not be alive|stop existing|stop living)|(?:do not|did not|would not|will not) (?:want|wanna) (?:to )?(?:be here|live|be alive|be here any ?more|be alive any ?more)|(?:wish|wished) (?:i|to) (?:was|were|be) (?:dead|gone|not here|never born)|never (?:been )?born|stop existing|suicid\\w*|end(?:ing)? my (?:own )?(?:life|it all)|(?:better|happier) (?:off )?without me|everyone (?:would be )?(?:happier|better) (?:off )?if (?:i|we) (?:was|were) gone|(?:want|wanted|wanna|going|thinking of|keep|keeps|feel like|try|tried|trying|sometimes|often|always|again|every (?:day|night)) (?:to |about )?(?:hurt|harm|cut|burn|scratch|starve|punish|bite|choke|hang)(?:ting|ing|s)? (?:my ?self|myself)|(?:hurt|harm|cut|burn|scratch|punish|starve|bite|choke)(?:ting|ing|s)? (?:my ?self|myself) (?:on purpose|till|until|again|every|deeply|bleed)|(?:swallow|swallowed|swallowing|took|take|taking) (?:all |lots of |too many )?(?:my |the )?(?:pills|tablets)[^.?!]{0,30}\\b(?:make it stop|to die|so i die|end it)|(?:want|wish|wanna|hope)\\w* (?:to )?(?:just )?(?:disappear|vanish)|make myself (?:disappear|vanish)|(?:thinking|think|thought|want|wanted|feel like|feels like|planning|keep thinking) (?:about |to |of )?(?:jump|jumping) (?:off|from|out of) (?:something high|a (?:high )?(?:bridge|roof|building|cliff|balcony|tower|window)|the (?:roof|bridge|balcony|cliff|window)|my (?:balcony|window))|hang myself)\\b`);
+const R_SELF = new RegExp(`\\b(?:kill(?:ing)? (?:my ?self|myself)|(?:want|wants|wanted|wish|wished|wanna|going|thinking of|think about|thinking about|thought about|planning|keep thinking about) (?:to )?(?:die|dying|be dead|end (?:it|my life|it all)|not be here|not be alive|stop existing|stop living)|(?:do not|did not|would not|will not) (?:want|wanna) (?:to )?(?:be here|live|be alive|be here any ?more|be alive any ?more)|(?:wish|wished) (?:i|to) (?:was|were|be) (?:dead|gone|not here|never born)|never (?:been )?born|stop existing|suicid\\w*|end(?:ing)? my (?:own )?(?:life|it all)|(?:better|happier) (?:off )?without me|everyone (?:would be )?(?:happier|better) (?:off )?if (?:i|we) (?:was|were) gone|(?:want|wanted|wanna|going|thinking of|thinking about|think about|thought about|keep thinking about|keep|keeps|feel like|try|tried|trying|sometimes|often|always|again|every (?:day|night)) (?:to |about )?(?:hurt|harm|cut|burn|scratch|starve|punish|bite|choke|hang)(?:ting|ing|s)? (?:my ?self|myself)|(?:hurt|harm|cut|burn|scratch|punish|starve|bite|choke)(?:ting|ing|s)? (?:my ?self|myself) (?:on purpose|till|until|again|every|deeply|bleed)|(?:swallow|swallowed|swallowing|took|take|taking) (?:all |lots of |too many )?(?:my |the )?(?:pills|tablets)[^.?!]{0,30}\\b(?:make it stop|to die|so i die|end it)|(?:want|wish|wanna|hope)\\w* (?:to )?(?:just )?(?:disappear|vanish)|make myself (?:disappear|vanish)|(?:do not|did not) like (?:being alive|my life|living)|go to sleep and (?:not|never) wake up|(?:wish|want|hope|wanted)[^.?!]{0,30}\\b(?:not|never) wake up|(?:thinking about|think about|want to|keep thinking about|wanted to|feel like) (?:just )?(?:run|running) in front of (?:a |the )?(?:car|bus|train|lorry)|(?:thinking about|think about|want to|keep thinking about|wanted to|feel like) (?:just )?(?:take|taking) (?:all )?(?:my )?(?:pills|tablets)|(?:thinking|think|thought|want|wanted|feel like|feels like|planning|keep thinking) (?:about |to |of )?(?:jump|jumping) (?:off|from|out of) (?:something high|a (?:high )?(?:bridge|roof|building|cliff|balcony|tower|window)|the (?:roof|bridge|balcony|cliff|window)|my (?:balcony|window))|hang myself)\\b`);
 const NEEDS_W = "(?:eat(?=\\s*$|\\s+(?:and|when|if|because|anything|any|dinner|breakfast|lunch|tea|supper|food|a meal|meals|my dinner))|food|dinner|breakfast|lunch|supper|meals?|a drink|any drink|drink water|water|wash|a bath|sleep(?=\\s*$|\\s+(?:and|when|if|because))|go to the toilet|use the toilet|go to bed)";
-const R_NEGLECT = new RegExp(`\\b(?:no (?:food|dinner|breakfast|lunch) (?:for|all|since|today|tonight|yesterday|again|last night|at home|in (?:our|my|the) (?:house|home|flat))|(?:i|we) (?:have|had|has) no (?:food|dinner|breakfast|lunch)|nothing to eat (?:for|all|since)|(?:nobody|no one|noone) (?:feeds|looks after|takes care of) (?:me|us)|(?:left|leaves|leaving|locks|locked|lock|shut|shuts) (?:me|us)(?: \\w+){0,3}? (?:alone|on my own|by myself)(?: \\w+){0,3}? (?:all night|overnight|every night|for days|all day|all weekend|at night)|(?:am|are|get|got|was|were) left (?:alone|on my own|by myself)(?: \\w+){0,3}? (?:all night|overnight|every night|for days|all day|all weekend|at night)|(?:alone|on my own|by myself) (?:all night|every night|overnight|for days)|home alone (?:all night|every night|overnight|for days)|(?:lock|locks|locked|shut|shuts) (?:me|us) (?:in|inside|out|outside)\\b|(?:get|gets|got|am|is|are|was|keep getting) locked (?:in|inside|out|outside)\\b(?: \\w+){0,4}? (?:for|all|every|overnight|in the cold|in the rain|in the dark)|(?:sent|put|left|locked|shut|kept|threw|sends|puts) (?:me|us)(?: \\w+){0,2}? (?:outside|out of the house)\\b(?: \\w+){0,5}? (?:as punishment|punish\\w*|when i (?:am|was|wet|cry|cried)|for being (?:bad|naughty)|because i (?:was|am) (?:bad|naughty)|all night|overnight|in the dark|for hours)|(?:get|gets|got|am|is|are|was) (?:sent|put|left) (?:out|outside)(?: \\w+){0,5}? (?:as punishment|punish\\w*|when i (?:am|was|wet|cry|cried)|for being (?:bad|naughty)|because i (?:was|am) (?:bad|naughty)|all night|overnight|in the dark|for hours)|(?:have to|had to|has to|must|always|every night|made to|makes me|make me|forced to) (?:\\w+ ){0,3}?sleep\\w* on the (?:floor|stairs|ground)|sleep\\w*[^.?!]{0,40}\\b(?:no|without a?) (?:blankets?|covers|duvet|pillow|bed)|(?:not|never) (?:given|fed) (?:\\w+ ){0,2}?(?:food|dinner|breakfast|lunch)|(?:will not|would not|does not|do not|did not|can not|never|refuses to|refused to) (?:let|lets|give|gives|feed|feeds) (?:me|us) (?:\\w+ )?${NEEDS_W}|(?:scared|afraid|frightened|terrified) (?:to|of) (?:go|going|be|being|stay|staying) (?:home|at home|back home)|do not want to (?:go|be|stay) (?:home|at home|back home) (?:any ?more|ever)|(?:do not|does not|did not) feel safe (?:at home|with (?:him|her|them|my \\w+))|(?:run|running) away from (?:home|my (?:mum|dad|family|house)))\\b`);
+const R_NEGLECT = new RegExp(`\\b(?:no (?:food|dinner|breakfast|lunch) (?:for|all|since|today|tonight|yesterday|again|last night|at home|in (?:our|my|the) (?:house|home|flat))|(?:i|we) (?:have|had|has) no (?:food|dinner|breakfast|lunch)|nothing to eat (?:for|all|since)|(?:i|we|my \\w+ and i) (?:have not|has not|had not|havent) eaten (?:since|for|all)|(?:i|we|my \\w+ and i) (?:have not|has not|had not) had (?:\\w+ ){0,2}(?:food|dinner|lunch|breakfast) (?:since|for)|(?:nobody|no one|noone) (?:feeds|looks after|takes care of) (?:me|us)|(?:left|leaves|leaving|locks|locked|lock|shut|shuts) (?:me|us)(?: \\w+){0,3}? (?:alone|on my own|by myself|on our own|by ourselves)(?: \\w+){0,3}? (?:all night|overnight|every night|for days|all day|all weekend|at night)|(?:am|are|get|got|was|were) left (?:alone|on my own|by myself)(?: \\w+){0,3}? (?:all night|overnight|every night|for days|all day|all weekend|at night)|(?:alone|on my own|by myself) (?:all night|every night|overnight|for days)|home alone (?:all night|every night|overnight|for days)|(?:lock|locks|locked|shut|shuts) (?:me|us) (?:in|inside|out|outside)\\b|(?:get|gets|got|am|is|are|was|keep getting) locked (?:in|inside|out|outside)\\b(?: \\w+){0,4}? (?:for|all|every|overnight|in the cold|in the rain|in the dark)|(?:sent|put|left|locked|shut|kept|threw|sends|puts) (?:me|us)(?: \\w+){0,2}? (?:outside|out of the house)\\b(?: \\w+){0,5}? (?:as punishment|punish\\w*|when i (?:am|was|wet|cry|cried)|for being (?:bad|naughty)|because i (?:was|am) (?:bad|naughty)|all night|overnight|in the dark|for hours)|(?:get|gets|got|am|is|are|was) (?:sent|put|left) (?:out|outside)(?: \\w+){0,5}? (?:as punishment|punish\\w*|when i (?:am|was|wet|cry|cried)|for being (?:bad|naughty)|because i (?:was|am) (?:bad|naughty)|all night|overnight|in the dark|for hours)|(?:have to|had to|has to|must|always|every night|made to|makes me|make me|forced to) (?:\\w+ ){0,3}?sleep\\w* on the (?:floor|stairs|ground)|sleep\\w*[^.?!]{0,40}\\b(?:no|without a?) (?:blankets?|covers|duvet|pillow|bed)|(?:not|never) (?:given|fed) (?:\\w+ ){0,2}?(?:food|dinner|breakfast|lunch)|(?:will not|would not|does not|do not|did not|can not|never|refuses to|refused to) (?:let|lets|give|gives|feed|feeds) (?:me|us) (?:\\w+ )?${NEEDS_W}|(?:scared|afraid|frightened|terrified) (?:to|of) (?:go|going|be|being|stay|staying) (?:home|at home|back home)|do not want to (?:go|be|stay) (?:home|at home|back home) (?:any ?more|ever)|(?:do not|does not|did not) feel safe (?:at home|with (?:him|her|them|my \\w+))|(?:run|running) away from (?:home|my (?:mum|dad|family|house)))\\b`);
 const R_SUBST = /\b(?:gives?|gave|giving|made|makes|make) (?:me|us)\b[^.?!]{0,30}\b(?:medicine|pills|tablets|drugs|beer|wine|alcohol|something to drink)\b/;
 const R_SLEEPY = /\b(?:sleepy|dizzy|can not remember|do not remember|forget|passed out|asleep)\b/;
 const R_ONLINE = /\b(?:stranger|man|someone|somebody|person|lady|woman)\b[^.?!]{0,40}\b(?:asked|told|wanted|tried to make|tried to get) me to (?:get in|get into|come with|go with|follow)\b|\b(?:online|stranger|man|someone|somebody|person|boy|girl)\b[^.?!]{0,40}\b(?:asked|asks|wants|wanted|keeps asking) (?:for |me for |me to (?:send|share|show) )?(?:my |your |a |some )?(?:address|where i live|phone number|photos?|pictures?|pics?|nudes?|naked)\b/;
@@ -1976,12 +1976,12 @@ const selfy = (s) => wordsOf(s).some((w) => SELF_W.has(w));
 function actedBy(s, re) {
   const m = re.exec(s); if (!m) return false;
   const before = wordsOf(s.slice(0, m.index)).slice(-7);
-  for (let k = before.length - 1; k >= 0; k--) { const w = before[k]; if (SELF_W.has(w)) return false; if (isPerson(w) && !YOU_W.has(w)) return !MEDICAL_W.has(w) && !MEDICAL_W.has(w.slice(0, -1)); }
+  for (let k = before.length - 1; k >= 0; k--) { const w = before[k]; if (w === "i" || w === "we") return false; if (SELF_W.has(w)) continue; if (isPerson(w) && !YOU_W.has(w)) return !MEDICAL_W.has(w) && !MEDICAL_W.has(w.slice(0, -1)); }
   return false;
 }
 /* "my brother beat me at chess" and "my dad kicked me the ball" are games */
 const GAME_AFTER = /^\s*(?:at (?:chess|football|tennis|cards|checkers|monopoly|a game|the game|games|running|racing|swimming|maths|spelling|\w*ball|draughts|snap|uno|fortnite|minecraft|video games|it)\b|the (?:ball|frisbee|puck|shuttlecock)\b|a (?:pass|ball)\b|in (?:the|a) (?:game|race|match)\b)/;
-const gameAfter = (s, re) => { const m = re.exec(s); return !!m && GAME_AFTER.test(s.slice(m.index + m[0].length)); };
+const gameAfter = (s, re) => { const m = re.exec(s); return !!m && /^(?:beat|beats|beating|beaten|kick|kicks|kicked|kicking|hit|hits|hitting|threw|throws)\b/.test(m[0]) && GAME_AFTER.test(s.slice(m.index + m[0].length)); };
 /* The explicit list. It is read on the plain words, never on words that were mended to a worry word: "hunting" must not become "hurting". A name never counts as a person here. */
 function riskOf(t) {
   for (const s of sentencesOf(t)) {
@@ -2106,13 +2106,15 @@ async function aiClassify(clean, age, signal) {
   return { tier: out.tier, category, reason: scrub(strOf(out.reason, "", 160)).text, gentle: out.gentle === true };
 }
 /* the final tier is the higher of the local check and the AI. The AI never lowers a local result. */
+const AI_WAIT = HASHFAST() ? 3000 : 20000; /* how long the AI check may take; a call that never answers must not hold the child or the teacher for ever */
+const withTimeout = (p, ms) => { let t; return Promise.race([p, new Promise((_, rej) => { t = setTimeout(() => rej({ code: "timeout" }), ms); })]).finally(() => clearTimeout(t)); };
 async function screen(clean, raw, age, ctl = null) {
   const a = localCheck(raw), b = localCheck(clean), local = TIER_RANK[b.tier] > TIER_RANK[a.tier] ? b : a;
   let ai = null;
   if (sampleFn) {
     const c = ctl || new AbortController();
-    const timer = setTimeout(() => { c.timedOut = true; c.abort(); }, 20000);
-    try { ai = await aiClassify(clean, age, c.signal); }
+    const timer = setTimeout(() => { c.timedOut = true; c.abort(); }, AI_WAIT);
+    try { ai = await withTimeout(aiClassify(clean, age, c.signal), AI_WAIT + 200); }
     catch (e) { if (c.userCancelled) throw { code: "cancelled" }; ai = null; }
     finally { clearTimeout(timer); }
   }
@@ -2178,6 +2180,23 @@ async function sendForReview(book, q, age) {
   if (!(await dbTry(() => dbCap.doc(`reviews/${cid}/items/${id}`).set(item)))) return { ok: false };
   if (!(await summariseReviews(cid))) { await dbTry(() => dbCap.doc(`reviews/${cid}/items/${id}`).delete()); return { ok: false }; } /* a book the inbox cannot list would wait for ever; if it cannot be taken back either, the next load of this page repairs the summary */
   return { ok: true, id, title: book.title };
+}
+
+/* A question to read: no book, only the scrubbed question, why the AI did not check it, and the age. ok only when the item AND its summary were written. */
+async function sendQuestion(q, age, reason) {
+  await Store.ready.catch(() => {});
+  const cid = Store.uid;
+  if (!dbCap || !cid) return { ok: false };
+  try { /* the same question already waiting is the same question */
+    const snap = await dbCap.collection(`reviews/${cid}/items`).get();
+    const same = snap.docs.find((d) => { const v = d.data(); return v && v.status === "pending" && v.question === q.slice(0, 500); });
+    if (same) return (await summariseReviews(cid)) ? { ok: true, id: same.id, existing: true } : { ok: false };
+  } catch {}
+  const id = "q" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const item = { kind: "question", question: q.slice(0, 500), age: age || null, createdAt: Date.now(), status: "pending", reason };
+  if (!(await dbTry(() => dbCap.doc(`reviews/${cid}/items/${id}`).set(item)))) return { ok: false };
+  if (!(await summariseReviews(cid))) { await dbTry(() => dbCap.doc(`reviews/${cid}/items/${id}`).delete()); return { ok: false }; }
+  return { ok: true, id };
 }
 
 /* ok is true only when the item AND its summary were both written. Nothing is claimed otherwise. */
@@ -2268,6 +2287,7 @@ const Store = {
     return dbTry(() => dbCap.doc(`flags/${this.uid}/items/${fid}`).update({ delivered: true, deliveredAt: Date.now() }));
   },
   /* the child's own new books that wait for a teacher. Only the status, title and the safe question are kept in memory. An approved book is copied onto the shelf. */
+  noteQuestion(id) { this.reviews.set(id, { id, kind: "question", status: "pending", title: "", question: "", delivered: false }); this.changed(); },
   noteReview(id, title, question) { this.reviews.set(id, { id, status: "pending", title, question, delivered: false }); this.changed(); },
   async refreshReviews(force = false) {
     if (!dbCap || !this.uid || this.reviewBusy) return;
@@ -2278,8 +2298,10 @@ const Store = {
       const next = new Map();
       for (const d of snap.docs) {
         const v = d.data(); if (!v || typeof v !== "object") continue;
-        const r = { id: d.id, status: String(v.status), title: strOf(v.title, "Your book", 120), question: scrub(strOf(v.question, "", 500)).text, delivered: !!v.delivered };
-        if (r.status === "approved" && !r.delivered && await this.deliverReview(d.id, v)) r.delivered = true;
+        const isQ = v.kind === "question"; /* a question to read has no book and nothing of the question is shown to the child */
+        const r = { id: d.id, kind: isQ ? "question" : "book", status: String(v.status), title: isQ ? "" : strOf(v.title, "Your book", 120), question: isQ ? "" : scrub(strOf(v.question, "", 500)).text, delivered: !!v.delivered };
+        if (isQ && (r.status === "read" || r.status === "closed")) continue;
+        if (!isQ && r.status === "approved" && !r.delivered && await this.deliverReview(d.id, v)) r.delivered = true;
         if (!r.delivered) next.set(d.id, r); /* a delivered book is on the shelf already */
       }
       this.reviews = next; this.changed();
@@ -2440,10 +2462,11 @@ function micBtn(target) {
 /* ---------- ask + bookshelf ---------- */
 function renderAsk(prefill) {
   setStep("ask");
-  const ta = el("textarea", { id: "q", rows: "2", placeholder: "I wonder…", "aria-label": "Your question" });
+  const ta = el("textarea", { id: "q", rows: "2", maxlength: "500", placeholder: "I wonder…", "aria-label": "Your question" });
   ta.value = prefill ?? state.question;
   const status = el("p", { class: "status", id: "askStatus" });
-  const go = el("button", { class: "btn", type: "button", id: "goBtn", text: "Write my book", disabled: sending.size > 0, onclick: () => start(ta.value.trim(), status) }); /* off while a book is still on its way to a teacher */
+  const go = el("button", { class: "btn", type: "button", id: "goBtn", text: "Write my book", disabled: isSending(ta.value), onclick: () => start(ta.value.trim(), status) }); /* off while this question is still on its way to a teacher */
+  ta.addEventListener("input", () => { go.disabled = isSending(ta.value); });
   const ageSeg = el("div", { class: "seg", role: "group", "aria-label": "Age" }, AGE_BANDS.map((a) =>
     el("button", { type: "button", "aria-pressed": String(state.age === a), text: a, onclick: (e) => { state.age = a; ageSeg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget))); } })));
   const ideas = ["Why do cats purr?", "Where does the wind come from?", "Why is the sea salty?", "How do bees know where flowers are?"];
@@ -2512,6 +2535,10 @@ function openBook(id, { fresh = false } = {}) {
 let loadTimer = null;
 const SCRUB_NOTE = "Pip took out some personal details. Pip doesn't need names or addresses to help.";
 const feelRepeat = new Map(); /* worries about feelings, counted for each child */
+function repeatRule(v, key, local) { /* "send higher on repeat": the second worry about feelings in one visit is risk */
+  if (v.tier === "sensitive" && local.key === "feelings") { feelRepeat.set(key, (feelRepeat.get(key) || 0) + 1); if (feelRepeat.get(key) >= 2) return { ...v, tier: "risk", reason: v.reason + " The child has said something like this more than once in this visit." }; }
+  return v;
+}
 async function start(rawQ, status, opt = {}) {
   const rel = opt.release || null; /* a teacher writing a gentle book: the question was screened already */
   let route = "direct"; /* direct: a teacher checks it here. review: it goes to a teacher's inbox first. */
@@ -2527,7 +2554,7 @@ async function start(rawQ, status, opt = {}) {
     if (local.tier !== "safe") { /* a flagged question never waits for the AI: the alert goes first, and the AI can only raise it afterwards */
       renderScreening(false);
       let v = { tier: local.tier, category: local.category, reason: local.reason, source: "local" };
-      if (v.tier === "sensitive" && local.key === "feelings") { const k = Store.uid || "none"; feelRepeat.set(k, (feelRepeat.get(k) || 0) + 1); if (feelRepeat.get(k) >= 2) v = { ...v, tier: "risk", reason: v.reason + " The child has said something like this more than once in this visit." }; } /* send higher on repeat */
+      v = repeatRule(v, Store.uid || "none", local);
       await handleFlagged(v, q);
       return;
     }
@@ -2537,12 +2564,15 @@ async function start(rawQ, status, opt = {}) {
     try { v = await screen(q, rawQ, state.age, ctl); }
     catch (e) { if (e?.code === "cancelled") { renderAsk(q); return; } v = { tier: "safe", ranWithoutAI: true }; }
     if (v.tier !== "safe") { await handleFlagged(v, q); return; }
-    if (!sampleFn) { renderAsk(q); $("#askStatus").textContent = [scrubbed ? SCRUB_NOTE : "", "New books can’t be written outside Claude. Open the sample book from the bookshelf below."].filter(Boolean).join(" "); return; }
-    if (v.ranWithoutAI) { /* fail closed: no book is written unless the AI check said safe too */
-      renderAsk(q); $("#askStatus").textContent = "Pip needs a moment. Please try again in a little while."; return;
+    const teacher = await viewerIsTeacher();
+    if (!sampleFn || v.ranWithoutAI) { /* fail closed: no book is written unless the AI check said safe too. But the question is never lost: a teacher reads it. */
+      if (!teacher && dbCap && Store.uid) { await submitQuestion(q, !sampleFn ? "no_ai" : "ai_unavailable"); return; }
+      renderAsk(q);
+      $("#askStatus").textContent = !sampleFn ? [scrubbed ? SCRUB_NOTE : "", "New books can’t be written outside Claude. Open the sample book from the bookshelf below."].filter(Boolean).join(" ") : "Pip needs a moment. Please try again in a little while.";
+      return;
     }
     /* a new book is checked by a teacher before a child reads it: a teacher here checks it now, a child's book goes to the inbox, and with no account there is nobody to check it */
-    route = (await viewerIsTeacher()) ? "direct" : dbCap && Store.uid ? "review" : "none";
+    route = teacher ? "direct" : dbCap && Store.uid ? "review" : "none";
     if (route === "none") { renderAsk(q); $("#askStatus").textContent = [scrubbed ? SCRUB_NOTE : "", NEED_TEACHER].filter(Boolean).join(" "); return; }
   } else state.question = q;
   renderLoading(scrubbed ? SCRUB_NOTE : "");
@@ -2564,7 +2594,9 @@ async function start(rawQ, status, opt = {}) {
 }
 const sending = new Map(); /* questions whose book is still being sent to a teacher, in memory only */
 const sendKey = (q) => String(q).toLowerCase().replace(/\s+/g, " ").trim();
-const isSending = (q) => { const t = sending.get(sendKey(q)); return !!t && Date.now() - t < 60000; }; /* a write that never settles stops counting after a minute */
+const SENDING_MS = REVIEW_WAIT + (HASHFAST() ? 3500 : 45000); /* a write that never settles stops counting after a minute (a few seconds after the wait, when testing) */
+const isSending = (q) => { const t = sending.get(sendKey(q)); return !!t && Date.now() - t < SENDING_MS; };
+const refreshGo = () => { const g = $("#goBtn"), t = $("#q"); if (g && t) g.disabled = isSending(t.value); }; /* the Write button follows the question in the box */
 const NEED_TEACHER = "A teacher needs to check new books. Ask your teacher to sign in on this tablet.";
 async function viewerIsTeacher() { try { return !!(userCap && (await userCap.canEdit())); } catch { return false; } }
 /* the child's new book goes to a teacher. Nothing says it was sent unless the write resolved. */
@@ -2572,7 +2604,7 @@ async function submitBook(book, q) {
   let timer; const timeout = new Promise((r) => { timer = setTimeout(() => r({ ok: false, late: true }), REVIEW_WAIT); });
   const key = sendKey(q); sending.set(key, Date.now());
   const attempt = sendForReview(book, q, state.age).catch(() => ({ ok: false }));
-  attempt.then(() => { sending.delete(key); const g = $("#goBtn"); if (g) g.disabled = sending.size > 0; });
+  attempt.then(() => { sending.delete(key); refreshGo(); }); setTimeout(refreshGo, SENDING_MS + 100);
   const res = await Promise.race([attempt, timeout]); clearTimeout(timer);
   if (!res.ok) {
     renderAsk(q); $("#askStatus").textContent = "Pip wrote your book, but it could not be sent to your teacher just now. Please try again in a little while.";
@@ -2581,6 +2613,21 @@ async function submitBook(book, q) {
   }
   state.book = null; state.bookId = null; state.question = "";
   Store.noteReview(res.id, res.title, q); renderWaiting(res.title);
+}
+/* A question the AI could not check (or no AI at all) still goes to a teacher to read. No book is written. */
+async function submitQuestion(q, reason) {
+  let timer; const timeout = new Promise((r) => { timer = setTimeout(() => r({ ok: false, late: true }), REVIEW_WAIT); });
+  const key = sendKey(q), age = state.age; sending.set(key, Date.now());
+  const attempt = sendQuestion(q, age, reason).catch(() => ({ ok: false }));
+  attempt.then(() => { sending.delete(key); refreshGo(); }); setTimeout(refreshGo, SENDING_MS + 100);
+  const res = await Promise.race([attempt, timeout]); clearTimeout(timer);
+  if (!res.ok) {
+    renderMessage("sensitive", false, age); /* "Please tell your teacher or a grown-up now": nothing is claimed */
+    if (res.late) attempt.then((r) => { if (r.ok) Store.noteQuestion(r.id); });
+    return;
+  }
+  Store.noteQuestion(res.id); state.question = "";
+  renderAsk(""); $("#askStatus").textContent = reason === "no_ai" ? "Pip can’t write new books on this page. Your teacher will look at your question." : "Pip needs a moment. Your teacher will look at your question.";
 }
 /* the "Teacher check" step as a child sees it */
 function renderWaiting(title) {
@@ -2870,7 +2917,7 @@ function showPage(idx, dir = 0) {
 function renderReflect() {
   setStep("reflect");
   const b = state.book;
-  const ta = el("textarea", { id: "think", rows: "3", placeholder: "I found out…", "aria-label": "What you found out" });
+  const ta = el("textarea", { id: "think", rows: "3", maxlength: "500", placeholder: "I found out…", "aria-label": "What you found out" });
   ta.value = state.reflection;
   const pick = el("div", { class: "chips", role: "group", "aria-label": "Lesson you liked most", id: "likePick" });
   [...b.lessons.map((l) => l.title), "Something else"].forEach((o) => pick.append(el("button", { class: "chip", type: "button", "aria-pressed": String(state.interest === o), text: o, onclick: (e) => {
@@ -2980,6 +3027,7 @@ function heldCard(f) {
 }
 /* a new book that a teacher has not passed yet. The question was safe, so it can be shown on the child's own shelf. A book sent back shows only a kind line: never the note or the reason. */
 function reviewCard(r) {
+  if (r.kind === "question") return r.status === "declined" ? el("article", { class: "book-card review", "data-review": "talk" }, el("h3", { text: "Your teacher would like to talk about this one" })) : el("article", { class: "book-card review", "data-review": "question", "data-review-id": r.id }, el("p", { class: "reviewstate", text: "Your teacher will look at your question" }));
   if (r.status === "sent_back" || r.status === "declined") return el("article", { class: "book-card review", "data-review": "talk" }, el("h3", { text: "Your teacher would like to talk about this one" }));
   if (r.status === "approved") return el("article", { class: "book-card review", "data-review": "ready" }, el("p", { class: "reviewstate", text: "Your teacher has checked this book. It is on its way to your bookshelf." }), el("h3", { text: r.title }));
   return el("article", { class: "book-card review", "data-review": "pending", "data-review-id": r.id }, el("p", { class: "reviewstate", text: "Waiting for your teacher to check" }), el("h3", { text: r.title }), r.question ? el("p", { class: "q", text: r.question }) : null);
@@ -3029,7 +3077,8 @@ async function removeMine() {
     try { /* the child's own new books: one a teacher has not checked yet stays until they have */
       const rs = await dbCap.collection(`reviews/${Store.uid}/items`).get();
       for (const d of rs.docs) {
-        if ((d.data() || {}).delivered !== true) { waiting++; continue; } /* only a book that is already on the shelf is removed; one waiting, sent back, raised or approved but not yet delivered stays with the teacher */
+        const dv = d.data() || {};
+        if (dv.delivered !== true && !(dv.kind === "question" && (dv.status === "read" || dv.status === "closed"))) { waiting++; continue; } /* only a book that is already on the shelf is removed; one waiting, sent back, raised or approved but not yet delivered stays with the teacher */
         await dbTry(() => dbCap.doc(`reviews/${Store.uid}/items/${d.id}`).delete());
       }
       await summariseReviews(Store.uid);
@@ -3094,9 +3143,9 @@ async function renderBanners() {
 }
 function updateTeacherBtn() {
   const b = $("#teacherBtn"); b.hidden = !Teacher.is;
-  const n = Teacher.open + Teacher.books.length + Teacher.held.length; /* open safety alerts, books waiting to be checked, and books held without an alert */
+  const n = Teacher.open + Teacher.books.length + Teacher.questions.length + Teacher.held.length; /* open safety alerts, books waiting to be checked, and books held without an alert */
   b.textContent = n > 0 ? `Teacher (${n})` : "Teacher";
-  b.setAttribute("aria-label", n > 0 ? `Teacher inbox, ${[Teacher.open ? plural(Teacher.open, "open alert") : "", Teacher.books.length ? plural(Teacher.books.length, "book") + " to check" : "", Teacher.held.length ? plural(Teacher.held.length, "book") + " held without an alert" : ""].filter(Boolean).join(" and ")}` : "Teacher inbox");
+  b.setAttribute("aria-label", n > 0 ? `Teacher inbox, ${[Teacher.open ? plural(Teacher.open, "open alert") : "", Teacher.books.length ? plural(Teacher.books.length, "book") + " to check" : "", Teacher.questions.length ? plural(Teacher.questions.length, "question") + " to read" : "", Teacher.held.length ? plural(Teacher.held.length, "book") + " held without an alert" : ""].filter(Boolean).join(" and ")}` : "Teacher inbox");
 }
 /* Every child's own items are read, not just the children whose summary says something is open: a summary can be overwritten by a teacher's write. */
 /* every child the page knows from an alert OR a book: a summary that failed to write must not hide an item */
@@ -3115,29 +3164,34 @@ Teacher.readAll = async function (all) {
   return rows;
 };
 /* The books that wait for a teacher, oldest first. Every child's own items are read, as for alerts, and only a pending one is listed. */
-Teacher.held = [];
+Teacher.held = []; Teacher.questions = [];
 Teacher.readReviews = async function () {
-  const rows = [], held = [], ids = new Set();
+  const rows = [], qs = [], held = [], ids = new Set();
   for (const d of (await dbCap.collection("reviews").get()).docs) ids.add(d.id);
   try { for (const d of (await dbCap.collection("flags").get()).docs) ids.add(d.id); } catch {} /* a child whose review summary was never written may still be known from an alert */
   for (const cid of ids) {
     let it; try { it = await dbCap.collection(`reviews/${cid}/items`).get(); } catch { continue; }
+    let flagItems = null; /* this child's alerts, read once if an older hold needs them */
     for (const x of it.docs) {
       const v = x.data(); if (!v || typeof v !== "object") continue;
-      if (v.status === "pending") rows.push({ ...v, cid, id: x.id });
+      if (v.status === "pending") (v.kind === "question" ? qs : rows).push({ ...v, cid, id: x.id });
       else if (v.status === "declined") { /* held back by a teacher who raised an alert: is there an alert? */
-        let has = false; if (v.flagId) { try { has = (await dbCap.doc(`flags/${cid}/items/${v.flagId}`).get()).exists; } catch { has = true; } } /* a read that failed is not "no alert" */
+        let has = false;
+        if (v.flagId) { try { has = (await dbCap.doc(`flags/${cid}/items/${v.flagId}`).get()).exists; } catch { has = true; } } /* a read that failed is not "no alert" */
+        else { /* an older hold has no alert id: look for the alert a teacher raised for this book */
+          try { if (!flagItems) flagItems = (await dbCap.collection(`flags/${cid}/items`).get()).docs.map((f) => f.data() || {}); has = flagItems.some((f) => f.source === "teacher" && (f.bookId === x.id || (f.question && f.question === v.question))); } catch { has = true; }
+        }
         if (!has) { let nt = {}; try { const sn = await noteRef(cid, x.id).get(); if (sn.exists) nt = sn.data() || {}; } catch {} held.push({ ...v, cid, id: x.id, itemFlagId: v.flagId || null, savedNote: strOf(nt.teacherNote, "", 300), savedTier: nt.raiseTier === "risk" ? "risk" : "sensitive" }); }
       }
     }
   }
-  rows.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-  this.held = held.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  rows.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)); qs.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  this.questions = qs; this.held = held.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   return rows;
 };
 Teacher.loadBooks = async function () {
   try { this.books = await this.readReviews(); } catch { return false; }
-  try { const ids = [...new Set(this.books.concat(this.held).map((r) => r.cid))].filter((i) => !own(this.names, i)); if (ids.length && userCap) Object.assign(this.names, await userCap.profiles(ids)); } catch {}
+  try { const ids = [...new Set(this.books.concat(this.held, this.questions).map((r) => r.cid))].filter((i) => !own(this.names, i)); if (ids.length && userCap) Object.assign(this.names, await userCap.profiles(ids)); } catch {}
   return true;
 };
 Teacher.refresh = async function () { /* the count on the button and the urgent banner */
@@ -3222,7 +3276,7 @@ async function bookAct(r, status, note, extra = {}) {
   let cur; try { cur = await dbCap.doc(`reviews/${r.cid}/items/${r.id}`).get(); } catch { return { ok: false }; }
   if (!cur.exists || (cur.data() || {}).status !== "pending" || (cur.data() || {}).delivered) return { ok: false, already: true };
   if (!(await noteWrite(r.cid, r.id, { teacherNote: note, handledAt: Date.now(), handledBy: Store.uid || null, status, title: strOf(r.title, "", 120), ...(extra.note || {}) }))) return { ok: false };
-  const ok = await dbTry(() => dbCap.doc(`reviews/${r.cid}/items/${r.id}`).update({ status, [status === "approved" ? "approvedAt" : status === "sent_back" ? "sentBackAt" : "heldAt"]: Date.now(), ...(extra.item || {}) }));
+  const ok = await dbTry(() => dbCap.doc(`reviews/${r.cid}/items/${r.id}`).update({ status, [status === "approved" ? "approvedAt" : status === "sent_back" ? "sentBackAt" : status === "declined" ? "heldAt" : "readAt"]: Date.now(), ...(extra.item || {}) }));
   if (ok) await summariseReviews(r.cid);
   return { ok };
 }
@@ -3235,7 +3289,7 @@ async function raiseFromBook(r, tier, note) {
     if (!h.ok) return { ok: false, step: "hold" };
     r.held = true; r.itemFlagId = fid;
   }
-  const item = { tier, category: "unclear", reason: "A teacher raised this from a new book that was waiting to be checked.", question: strOf(r.question, "", 500), age: r.age ?? null, createdAt: Date.now(), status: "new", source: "teacher" };
+  const item = { tier, category: "unclear", reason: "A teacher raised this from a new book that was waiting to be checked.", question: strOf(r.question, "", 500), age: r.age ?? null, createdAt: Date.now(), status: "new", source: "teacher", bookId: r.id };
   if (!(await dbTry(() => dbCap.doc(`flags/${r.cid}/items/${fid}`).set(item)))) return { ok: false, step: "flag" };
   if (!(await noteWrite(r.cid, fid, { teacherNote: note, raisedAt: Date.now(), raisedBy: Store.uid || null }))) return { ok: false, step: "flag" };
   if (!(await summarise(r.cid))) return { ok: false, step: "flag" };
@@ -3258,12 +3312,41 @@ function raiseBoxFor(r, onDone, { again = false } = {}) {
     else { rMsg.textContent = res.step === "flag" || r.held ? "The book is held back, but the safety alert could not be saved. It is listed under Safety alerts as held without an alert. Press the button again to try the alert again." : "That could not be saved. Nothing was changed. Check the connection and try again."; go.disabled = false; }
   } });
   return el("div", { class: "raisebox", "data-raise": "1", hidden: !again },
-    el("p", { class: "label", text: again ? "This book is held back and the child’s shelf says you would like to talk about it, but its safety alert was not saved. Raise it again." : "This holds the book back for ever, tells the child you would like to talk about it, and adds a safety alert above. Follow your school’s child protection procedure." }),
+    el("p", { class: "label", text: again ? "This book is held back and the child’s shelf says you would like to talk about it, but its safety alert was not saved. Raise it again." : "This holds the book or question back for ever, tells the child you would like to talk about it, and adds a safety alert above. Follow your school’s child protection procedure." }),
     el("div", { class: "row" }, tierSel, rNote),
     el("div", { class: "row" }, go, again ? null : el("button", { class: "btn small ghost", type: "button", text: "Cancel", onclick: (e) => { e.currentTarget.closest(".raisebox").hidden = true; } })),
     rMsg);
 }
 let bookRowN = 0;
+/* a question the AI did not check: the teacher reads it. Read, close with a note, or raise it as a safety alert. */
+function questionRow(r, onDone) {
+  const nm = pupilLabel(r.cid, Teacher.names, r.createdAt);
+  const note = el("input", { type: "text", maxlength: "300", "aria-label": "Short note", placeholder: "A short note (needed to close it with a note). The child does not see it." });
+  const msg = el("p", { class: "status", role: "status" });
+  const raiseBox = raiseBoxFor(r, onDone);
+  const act = (status, needNote) => async (e) => {
+    const t = note.value.trim();
+    if (needNote && !t) { msg.textContent = "Add a short note first."; note.focus(); return; }
+    const b = e.currentTarget; b.disabled = true; msg.textContent = "Saving…";
+    const res = await bookAct(r, status, t);
+    if (res.already) onDone("Already handled. This question has already been dealt with, so nothing was changed.");
+    else if (res.ok) onDone(status === "read" ? "Marked as read." : "Closed with your note.");
+    else { msg.textContent = "That could not be saved. Check the connection and try again."; b.disabled = false; }
+  };
+  return el("article", { class: "book-row", "data-question-review": r.id, "data-cid": r.cid },
+    el("div", { class: "flag-head" },
+      el("span", { class: "tierchip book", text: "Question to read" }),
+      el("span", { class: "fwho", text: nm }),
+      el("span", { class: "label", text: `Ages ${r.age || "unknown"} · ${fmtTime(r.createdAt)} · ${r.reason === "no_ai" ? "This page had no AI check" : "The AI check did not answer"}` })),
+    el("div", { class: "fq" }, el("b", { text: "The child asked: " }), el("span", { class: "bq", text: strOf(r.question, "(the question was not kept)", 500) })),
+    raiseBox,
+    el("div", { class: "row" }, note),
+    el("div", { class: "row" },
+      el("button", { class: "btn small teal", type: "button", "data-act": "read-question", text: "Read", onclick: act("read", false) }),
+      el("button", { class: "btn small ghost", type: "button", "data-act": "close-question", text: "Close with a note", onclick: act("closed", true) }),
+      el("button", { class: "btn small ghost", type: "button", "data-act": "raise-open", text: "Raise as a safety alert", onclick: () => { raiseBox.hidden = !raiseBox.hidden; if (!raiseBox.hidden) $("[data-field=raise-note]", raiseBox).focus(); } })),
+    msg);
+}
 /* a book held back by "Raise as a safety alert" whose alert was never saved: it stays on the screen until the alert exists */
 function heldRow(r, onDone) {
   r.held = true;
@@ -3325,14 +3408,15 @@ function tryBox() {
     const raw = text.value.slice(0, 500);
     if (!raw.trim()) { out.replaceChildren(el("p", { text: "Type some words first." })); return; }
     go.disabled = true;
-    const clean = scrub(raw).text, a = localCheck(raw), b = localCheck(clean), local = TIER_RANK[b.tier] > TIER_RANK[a.tier] ? b : a;
+    const clean = scrub(raw).text, a = localCheck(raw), b = localCheck(clean), found = TIER_RANK[b.tier] > TIER_RANK[a.tier] ? b : a;
+    const local = repeatRule({ ...found }, "try:" + (Store.uid || "none"), found); /* the same "twice in one visit" rule as a child's question */
     const lp = el("p", { id: "tryLocal", text: `Local check: ${local.tier}${local.category !== "none" ? " · " + (CAT_WORD[local.category] || local.category) : ""}. ${local.reason || "Nothing was found."}` });
     const ap = el("p", { id: "tryAi", text: sampleFn ? "AI check: asking…" : "AI check: not available. It needs this page open in Claude." });
     out.replaceChildren(lp, ap);
     if (sampleFn) {
-      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), AI_WAIT);
       try {
-        const ai = await aiClassify(clean, state.age, ctl.signal);
+        const ai = await withTimeout(aiClassify(clean, state.age, ctl.signal), AI_WAIT + 200); /* the button always comes back */
         ap.textContent = `AI check: ${ai.tier}${ai.category !== "none" ? " · " + (CAT_WORD[ai.category] || ai.category) : ""}. ${ai.reason || ""}`;
         const top = TIER_RANK[ai.tier] > TIER_RANK[local.tier] ? ai.tier : local.tier;
         out.append(el("p", { id: "tryBoth", text: `A child who asked this would be treated as: ${top} (the higher of the two).` }));
@@ -3355,6 +3439,7 @@ async function renderTeacher(msg = "") {
   const setup = el("section", { class: "setup", id: "safetySetup", "aria-labelledby": "setupH" });
   const bookList = el("div", { class: "inbox", id: "bookList" }, el("p", { class: "label", text: "Loading…" }));
   const books = el("section", { class: "books", id: "bookInbox", "aria-labelledby": "booksH" }, el("h3", { id: "booksH", text: "Books to check" }),
+    el("p", { class: "label", id: "readFirst", text: "Read each child’s question first. If anything worries you, use Raise as a safety alert." }),
     el("p", { class: "label", text: "New books that children asked for wait here. A child can read one only after you approve it. Safety alerts always come first." }), bookList);
   setPanel(el("div", { class: "eyebrow", text: "For teachers" }), el("h2", { text: "Teacher inbox" }),
     el("p", { class: "lead", text: "Alerts from children appear here, urgent ones first. This page prompts you. It does not replace your school’s child protection procedure or your DSL." }),
@@ -3382,8 +3467,8 @@ async function renderTeacher(msg = "") {
   const okBooks = await Teacher.loadBooks();
   if (state.step !== "teacher") return;
   if (!okBooks) bookList.replaceChildren(el("p", { class: "warn", text: "The books to check could not be read. Check the connection and open the inbox again." }));
-  else if (!Teacher.books.length) bookList.replaceChildren(el("p", { id: "booksEmpty", text: "No books are waiting." }));
-  else bookList.replaceChildren(...Teacher.books.map((r) => bookRow(r, done)));
+  else if (!Teacher.books.length && !Teacher.questions.length) bookList.replaceChildren(el("p", { id: "booksEmpty", text: "No books are waiting." }));
+  else bookList.replaceChildren(...(Teacher.questions.length ? [el("h4", { id: "questionsH", text: "Questions to read (not checked by the AI)" }), ...Teacher.questions.map((r) => questionRow(r, done))] : []), ...Teacher.books.map((r) => bookRow(r, done)));
   if (Teacher.held.length) { if ($("#inboxEmpty", list)) $("#inboxEmpty", list).remove(); list.append(...Teacher.held.map((r) => heldRow(r, done))); } /* under the safety alerts */
   updateTeacherBtn();
 }
