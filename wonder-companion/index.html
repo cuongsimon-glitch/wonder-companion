@@ -2171,7 +2171,7 @@ async function sendForReview(book, q, age) {
   /* a write that landed after the 15 second wait must not be written again by a retry: the same question already waiting is the same book */
   try {
     const snap = await dbCap.collection(`reviews/${cid}/items`).get();
-    const same = snap.docs.find((d) => { const v = d.data(); return v && v.status === "pending" && v.question === q.slice(0, 500); });
+    const same = snap.docs.find((d) => { const v = d.data(); return v && v.kind !== "question" && v.status === "pending" && v.question === q.slice(0, 500); }); /* a question waiting is not a book waiting */
     if (same) { const ok = await summariseReviews(cid); return ok ? { ok: true, id: same.id, title: strOf(same.data().title, book.title, 120), existing: true } : { ok: false }; }
   } catch {}
   const id = "book-r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
@@ -2539,6 +2539,7 @@ function repeatRule(v, key, local) { /* "send higher on repeat": the second worr
   if (v.tier === "sensitive" && local.key === "feelings") { feelRepeat.set(key, (feelRepeat.get(key) || 0) + 1); if (feelRepeat.get(key) >= 2) return { ...v, tier: "risk", reason: v.reason + " The child has said something like this more than once in this visit." }; }
   return v;
 }
+const BOOK_WAIT = location.hash === "#fast" ? 3000 : 120000; /* how long a child's book may take to be written before the question goes to a teacher */
 async function start(rawQ, status, opt = {}) {
   const rel = opt.release || null; /* a teacher writing a gentle book: the question was screened already */
   let route = "direct"; /* direct: a teacher checks it here. review: it goes to a teacher's inbox first. */
@@ -2578,13 +2579,19 @@ async function start(rawQ, status, opt = {}) {
   renderLoading(scrubbed ? SCRUB_NOTE : "");
   const ctl = new AbortController(); state.ctl = ctl;
   try {
-    const raw = await sampleFn.json(buildPrompt(q, state.age, { gentle: !!rel }), { signal: ctl.signal, modelTier: "default", cache: false });
+    const call = sampleFn.json(buildPrompt(q, state.age, { gentle: !!rel }), { signal: ctl.signal, modelTier: "default", cache: false });
+    /* a child's book has a time limit: a call that never answers is stopped, and the question goes to a teacher */
+    const raw = route === "review" ? await withTimeout(call, BOOK_WAIT).catch((e) => { if (e?.code === "timeout") { ctl.timedOut = true; ctl.abort(); } throw e; }) : await call;
     const book = validBook(raw, state.age);
     if (!book) throw { code: "bad_story" };
     book.question = q; state.book = book; state.bookId = null;
     if (route === "review") { await submitBook(book, q); return; }
     renderCheck(book, { id: null, release: rel });
   } catch (e) {
+    if (route === "review") { /* a child's question is never lost: if the book step fails, hangs or is cancelled, a teacher reads the question */
+      const reason = ctl.timedOut ? "book_timeout" : ctl.signal.aborted || e?.code === "cancelled" ? "cancelled" : "book_failed";
+      await submitQuestion(q, reason); return;
+    }
     const msg = { not_granted: "Pip needs permission to write books. Allow it when Claude asks, then try again.", rate_limited: "Pip is out of breath. Wait a minute, then try again.", invalid_json: "Pip’s book came out jumbled. Press the button to try again.", bad_story: "Pip’s book came out jumbled. Press the button to try again." }[e?.code] || "Pip couldn’t write the book just now. Press the button to try again.";
     if (rel) { renderTeacher(e?.code === "cancelled" ? "" : msg.replace("Press the button to try again.", "Try again from the inbox.")); return; }
     renderAsk(q);
@@ -2607,8 +2614,8 @@ async function submitBook(book, q) {
   attempt.then(() => { sending.delete(key); refreshGo(); }); setTimeout(refreshGo, SENDING_MS + 100);
   const res = await Promise.race([attempt, timeout]); clearTimeout(timer);
   if (!res.ok) {
-    renderAsk(q); $("#askStatus").textContent = "Pip wrote your book, but it could not be sent to your teacher just now. Please try again in a little while.";
     if (res.late) attempt.then((r) => { if (r.ok) { Store.noteReview(r.id, r.title, q); const st = $("#askStatus"); if (st) st.textContent = "Your book did reach your teacher after all. It is waiting on your bookshelf."; } }); /* it landed late: say so, and show it on the shelf */
+    await submitQuestion(q, "book_not_sent"); /* the book could not be sent: the question still reaches a teacher */
     return;
   }
   state.book = null; state.bookId = null; state.question = "";

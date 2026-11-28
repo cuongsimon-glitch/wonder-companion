@@ -450,6 +450,7 @@ function installStubs() {
       if (typeof d !== 'object' || Array.isArray(d)) throw { code: 'invalid_argument' };
       guardWrite(p);
       if (opts.hangReviewWrites && p.startsWith('reviews/') && ss('nofail') !== '1') { log.sets.push({ path: p, at: Date.now(), hung: true }); return new Promise(() => {}); }
+      if (opts.failBookReviews && /^reviews\/[^/]+\/items\//.test(p) && d.kind !== 'question') { log.sets.push({ path: p, at: Date.now(), failed: true }); throw { code: 'unavailable', message: 'offline' }; } // a child's book cannot be stored; a question still can
       if (p.startsWith('flags/') && hangFlags()) { log.sets.push({ path: p, at: Date.now(), hung: true }); return new Promise(() => {}); } // a write that never settles
       if (opts.failFirstSet && !log.failed) { log.failed = Date.now(); log.sets.push({ path: p, at: Date.now(), failed: true }); throw { code: 'unavailable', message: 'try again' }; }
       if (opts.slowFlagSet && /^flags\/[^/]+\/items\//.test(p)) await new Promise((r) => setTimeout(r, opts.slowFlagSet)); // a slow alert write
@@ -508,7 +509,10 @@ function installStubs() {
       log.classifyDone.push(Date.now());
       return { tier: opts.classifierTier || 'safe', category: opts.classifierTier && opts.classifierTier !== 'safe' ? 'abuse_or_hurt' : 'none', reason: 'stub', gentle: false };
     }
-    log.prompts.push(prompt); await new Promise((r) => setTimeout(r, opts.bookDelay || 120));
+    log.prompts.push(prompt);
+    if (opts.bookHang) return new Promise(() => {}); // never answers and ignores abort
+    if (opts.bookFail) throw { code: 'unavailable', message: 'down' };
+    await new Promise((r, j) => { const t = setTimeout(r, opts.bookDelay || 120); o?.signal?.addEventListener('abort', () => { clearTimeout(t); j({ code: 'cancelled' }); }); }); // a book being written stops when the child cancels, as the real call does
     return /older/.test(prompt) ? older(mk('10–11')) : mk(/aged 4/.test(prompt) ? '4–6' : '7–9');
   } };
   window.claude = { use: async (name) => { if (name === 'sample' && opts.sampleDelay) await new Promise((r) => setTimeout(r, opts.sampleDelay)); return ({
@@ -1867,6 +1871,44 @@ async function questionFlow(browser) {
     else check(/^Local check: risk/.test(lt) && /more than once/.test(lt), `panel: the second worry about feelings shows "${lt}"`);
   }
   failures.push(...pn.errs); await pn.page.close();
+
+  // 8) the book step fails, hangs or is cancelled, or the finished book cannot be sent: the question still reaches a teacher
+  // a) the book call throws
+  const ba = await openPageWith(browser, { opts: { classifierTier: 'safe', bookFail: true }, session: { uid: 'u_amy' } });
+  await ask(ba.page, 'Why is the sky blue?', '7–9');
+  await ba.page.waitForFunction(() => /Your teacher will look at your question/.test(document.querySelector('#askStatus')?.textContent || ''), null, { timeout: 10000 }).catch(() => failures.push('book failed: the child was not told a teacher will look at the question'));
+  const sa = await stubStore(ba.page), ka = Object.keys(sa).filter((k) => /^reviews\/u_amy\/items\//.test(k));
+  check(ka.length === 1 && sa[ka[0]].kind === 'question' && sa[ka[0]].reason === 'book_failed', `book failed: the question item is ${JSON.stringify(ka.map((k) => sa[k]))}`);
+  failures.push(...ba.errs); await ba.page.close();
+  // b) the book call never resolves (#fast: the wait is 3 seconds)
+  const bb = await openPageWith(browser, { opts: { classifierTier: 'safe', bookHang: true }, session: { uid: 'u_amy' } });
+  await ask(bb.page, 'Why do cats purr?', '7–9');
+  await bb.page.waitForFunction(() => Object.entries(window.__stub.store).some(([k, v]) => /^reviews\/u_amy\/items\//.test(k) && v && v.reason === 'book_timeout'), null, { timeout: 10000 }).catch(() => failures.push('book timeout: no question item with reason book_timeout'));
+  const sb = await stubStore(bb.page), kb = Object.keys(sb).filter((k) => /^reviews\/u_amy\/items\//.test(k));
+  check(kb.length === 1 && sb[kb[0]].kind === 'question' && sb[kb[0]].reason === 'book_timeout', `book timeout: the question item is ${JSON.stringify(kb.map((k) => sb[k]))}`);
+  failures.push(...bb.errs); await bb.page.close();
+  // c) the child presses Cancel while the book is being written
+  const bc = await openPageWith(browser, { opts: { classifierTier: 'safe', bookDelay: 60000 }, session: { uid: 'u_amy' } });
+  await ask(bc.page, 'Why do bees buzz?', '7–9');
+  await bc.page.locator('.eyebrow', { hasText: 'Writing your book' }).waitFor({ timeout: 8000 }).catch(() => failures.push('cancel: the book never started being written'));
+  await btn(bc.page, 'Cancel').click();
+  await bc.page.waitForFunction(() => Object.entries(window.__stub.store).some(([k, v]) => /^reviews\/u_amy\/items\//.test(k) && v && v.reason === 'cancelled'), null, { timeout: 10000 }).catch(() => failures.push('cancel: no question item with reason cancelled'));
+  const sc = await stubStore(bc.page), kc = Object.keys(sc).filter((k) => /^reviews\/u_amy\/items\//.test(k));
+  check(kc.length === 1 && sc[kc[0]].kind === 'question' && sc[kc[0]].reason === 'cancelled', `cancel: the question item is ${JSON.stringify(kc.map((k) => sc[k]))}`);
+  failures.push(...bc.errs); await bc.page.close();
+  // d) the book is written but cannot be stored: the question is stored instead
+  const bd = await openPageWith(browser, { opts: { classifierTier: 'safe', failBookReviews: true }, session: { uid: 'u_amy' } });
+  await ask(bd.page, 'Why is grass green?', '7–9');
+  await bd.page.waitForFunction(() => /Your teacher will look at your question/.test(document.querySelector('#askStatus')?.textContent || ''), null, { timeout: 15000 }).catch(() => failures.push('book not sent: the child was not told a teacher will look at the question'));
+  const sd = await stubStore(bd.page), kd = Object.keys(sd).filter((k) => /^reviews\/u_amy\/items\//.test(k));
+  check(kd.length === 1 && sd[kd[0]].kind === 'question' && sd[kd[0]].reason === 'book_not_sent', `book not sent: the question item is ${JSON.stringify(kd.map((k) => sd[k]))}`);
+  failures.push(...bd.errs); await bd.page.close();
+  // e) every review write fails: the child is told to find a grown-up
+  const be = await openPageWith(browser, { opts: { classifierTier: 'safe', failReviewWrites: true }, session: { uid: 'u_amy' } });
+  await ask(be.page, 'Why do frogs jump?', '7–9');
+  await be.page.locator('#safetyMsg').waitFor({ timeout: 15000 }).catch(() => failures.push('nothing saved: no message'));
+  check(((await be.page.locator('#msgText').textContent()) || '').startsWith('Please tell your teacher or a grown-up now.'), 'nothing saved: the child was not told to find a grown-up');
+  failures.push(...be.errs); await be.page.close();
 }
 
 (async () => {
