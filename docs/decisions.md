@@ -42,3 +42,13 @@ Each entry gives the date, the decision and the reason.
   (`data/users/<id>`) when signed in at Contributor level or above, otherwise to the tablet's
   localStorage with a visible note. Reason: "the child is free to revisit the book on their own
   tablet". Open question: how children will sign in on school tablets.
+- 2026-11-28: **Sensitive questions are screened in two tiers** (user decision). Risk of harm:
+  no book, a kind message to the child, an urgent alert to staff. Sensitive topic: the book is
+  held until a teacher has talked with the child and chooses to release a gentle version or not.
+  The screening is a local check plus an AI classifier; the AI can raise a tier but never lower
+  the local result. It supports, and never replaces, the school's safeguarding procedure and DSL.
+- 2026-11-28: **Alerts go to a teacher inbox inside the page** (user decision). Editors and the
+  owner are teachers; children are Contributors. Children write only their own flags
+  (`flags/<uid>`), teachers read and handle all of them.
+- 2026-11-28: **Personal details are scrubbed** from anything a child types or says before it is
+  sent to the AI, shown or saved. The child's name is never asked for or stored.
