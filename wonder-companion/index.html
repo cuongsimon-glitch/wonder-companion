@@ -2602,7 +2602,7 @@ async function start(rawQ, status, opt = {}) {
 const sending = new Map(); /* questions whose book is still being sent to a teacher, in memory only */
 const sendKey = (q) => String(q).toLowerCase().replace(/\s+/g, " ").trim();
 const SENDING_MS = REVIEW_WAIT + (HASHFAST() ? 3500 : 45000); /* a write that never settles stops counting after a minute (a few seconds after the wait, when testing) */
-const isSending = (q) => { const t = sending.get(sendKey(q)); return !!t && Date.now() - t < SENDING_MS; };
+const isSending = (q) => [sendKey(q), sendKey(q) + "#q"].some((k) => { const t = sending.get(k); return !!t && Date.now() - t < SENDING_MS; }); /* a book send or a question send for this question keeps the Write button off */
 const refreshGo = () => { const g = $("#goBtn"), t = $("#q"); if (g && t) g.disabled = isSending(t.value); }; /* the Write button follows the question in the box */
 const NEED_TEACHER = "A teacher needs to check new books. Ask your teacher to sign in on this tablet.";
 async function viewerIsTeacher() { try { return !!(userCap && (await userCap.canEdit())); } catch { return false; } }
@@ -2624,7 +2624,7 @@ async function submitBook(book, q) {
 /* A question the AI could not check (or no AI at all) still goes to a teacher to read. No book is written. */
 async function submitQuestion(q, reason) {
   let timer; const timeout = new Promise((r) => { timer = setTimeout(() => r({ ok: false, late: true }), REVIEW_WAIT); });
-  const key = sendKey(q), age = state.age; sending.set(key, Date.now());
+  const key = sendKey(q) + "#q", age = state.age; sending.set(key, Date.now()); /* its own key: finishing a question never clears the book's marker */
   const attempt = sendQuestion(q, age, reason).catch(() => ({ ok: false }));
   attempt.then(() => { sending.delete(key); refreshGo(); }); setTimeout(refreshGo, SENDING_MS + 100);
   const res = await Promise.race([attempt, timeout]); clearTimeout(timer);
