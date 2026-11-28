@@ -66,3 +66,10 @@ Each entry gives the date, the decision and the reason.
   false alarms opened a way to hide a real disclosure. Accepts more teacher chats (about 1 in 6
   family questions in testing). The AI check and teacher approval of every book stay the main
   protection; a teacher-only "Try the safety check" panel lets the DSL test them.
+- 2026-11-28: **Every question a child asks is read by a teacher.** Flagged questions arrive as
+  safety alerts; questions that pass both checks arrive as books to check (the teacher reads the
+  question before approving); questions the AI couldn't check arrive as "questions to read".
+  The local check decides urgency, not whether a human sees the question. Reason: five rounds of
+  held-out testing showed a word list misses many disclosures phrased in ordinary words (the
+  latest fresh set: 12 of 20 held, 8 marked safe), while teacher reading catches what words miss.
+  Urgent (risk) is kept narrow to avoid alert fatigue.
